@@ -48,7 +48,7 @@ def count_one_per_row(df: pd.DataFrame, field: str, target: str):
     target_count = seq.count(target)
     return target_count, total_count
 
-def count_vary_per_row(df: pd.DataFrame, field: str, target: str, count_field: str, ):
+def count_vary_per_row(df: pd.DataFrame, field: str, target: str, count_field: str):
     count_s = pd.to_numeric(df[count_field], errors="coerce").fillna(1)
     total_count = count_s.sum()
     target_count = count_s[df[field] == target].sum()
