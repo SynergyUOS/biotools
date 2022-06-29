@@ -56,9 +56,6 @@ def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species
     result_df = pd.DataFrame(table, columns=columns)
     result_df = pd.merge(biotope_df, result_df, on="BT_ID", how="left")
     result_df = result_df.fillna({field: 0 for field in columns[1:]})
-
-    arcpy.management.Delete("memory/joined_survey_point_layer")
-
     return result_df
 
 def count_one_per_row(df: pd.DataFrame, field: str, target: str):
@@ -87,28 +84,23 @@ def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df:
         if bt_id is None:
             continue
 
-        species_list = survey_point_df[survey_point_df["BT_ID"] == bt_id]["국명"].tolist()
-        unique_species_list = list(set(species_list))
-        proportions = [species_list.count(species) / len(species_list) for species in unique_species_list]
-        shannon_index = sum(-(p * math.log2(p)) for p in proportions)
+        count_s = survey_point_df[survey_point_df["BT_ID"] == bt_id]["국명"].value_counts()
+        shannon_index = get_shannon_index(count_s)
+        table.append([bt_id, count_s.sum(), shannon_index])
 
-        table.append([bt_id, len(species_list), shannon_index])
+    columns = ["BT_ID", "ALL_number", "H"]
+    result_df = pd.DataFrame(table, columns=columns)
+    result_df = result_df.assign(**{"2_Diversity_Index": lambda x: minmax_normalize(x["H"])})
 
-    result = pd.DataFrame(table, columns=["BT_ID", "ALL_number", "H"])
-    result["2_Diversity_Index"] = minmax(result["H"])
-    result["H"] = result["H"].round(3)
-    result["2_Diversity_Index"] = result["2_Diversity_Index"].round(3)
-
-    result = pd.merge(biotope_df, result, on="BT_ID", how="left")
-    result.fillna(0, inplace=True)
-
-    return result
+    result_df = pd.merge(biotope_df, result_df, on="BT_ID", how="left")
+    result_df = result_df.fillna({field: 0 for field in columns[1:]})
+    return result_df
 
 def get_shannon_index(counts):
     proportions = [count / sum(counts) for count in counts]
     return sum(-(p * math.log2(p)) for p in proportions)
 
-def minmax(seq):
+def minmax_normalize(seq):
     maximum = max(seq)
     minimum = min(seq)
     return [(i - minimum) / (maximum - minimum) for i in seq]
