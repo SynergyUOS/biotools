@@ -137,3 +137,22 @@ def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_laye
     result_df = pd.DataFrame(table, columns=["BT_ID", "D1_count", "D2_count", "D3_count", "3_Combinable_Producers_and_Consumers"])
     result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
+
+
+def get_connection_strength(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
+    """연결강도"""
+    biotope_df = arcutils.layer_to_df(biotope_layer)
+    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
+
+    table = []
+    for bt_id in survey_point_df["BT_ID"].unique():
+        if bt_id is None:
+            continue
+
+        count_s = survey_point_df[survey_point_df["BT_ID"] == bt_id]["Owls_foods"].value_counts()
+        prey_count = count_s.get("Prey_S", 0)
+        table.append([bt_id, prey_count, int(prey_count > 0)])
+
+    result_df = pd.DataFrame(table, columns=["BT_ID", "Prey_Snumber", "4_Connection_Strength"])
+    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
+    return result_df
