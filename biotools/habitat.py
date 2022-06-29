@@ -5,7 +5,7 @@ import pandas as pd
 from biotools import arcutils
 
 
-def get_habitat_size(biotope_layer, lower_bounds=(50, 10, 1, 0), scores=(1, 0.5, 0.3, 0.2, 0)):
+def evaluate_habitat_size(biotope_layer, lower_bounds=(50, 10, 1, 0), scores=(1, 0.5, 0.3, 0.2, 0)):
     """서식지 규모
 
     ### To Do
@@ -26,11 +26,11 @@ def range_evaluate(value, lower_bounds, scores):
 
 def get_default_habitable_codes():
     result = []
-    for category, upper_bound in zip("HIJKLM", [12, 1, 13, 2, 5, 4]):
+    for category, upper_bound in zip("HIJKLM", (12, 1, 13, 2, 5, 4)):
         result += [category + str(i) for i in range(1, upper_bound + 1)]
     return tuple(result)
 
-def get_patch_isolation(biotope_layer, habitable_codes=get_default_habitable_codes()):
+def evaluate_patch_isolation(biotope_layer, habitable_codes=get_default_habitable_codes()):
     """패치고립도
     """
     query = " OR ".join([f"비오톱 = '{code}'" for code in habitable_codes])
@@ -45,9 +45,9 @@ def get_patch_isolation(biotope_layer, habitable_codes=get_default_habitable_cod
     biotope_df = arcutils.layer_to_df(biotope_layer)
     in_buffer_df = arcutils.layer_to_df(in_buffer_table)
 
-    in_buffer_area_s = in_buffer_df.groupby("ORIG_FID").sum()["PERCENTAGE"]
+    in_buffer_proportion_s = in_buffer_df.groupby("ORIG_FID").sum()["PERCENTAGE"]
 
-    result_df = pd.merge(biotope_df, in_buffer_area_s, left_index=True, right_index=True, how="left")
+    result_df = pd.merge(biotope_df, in_buffer_proportion_s, left_index=True, right_index=True, how="left")
     result_df = result_df.rename(columns={"PERCENTAGE": "PatchIsolation"})
     result_df = result_df.fillna({"PatchIsolation": 0})
 

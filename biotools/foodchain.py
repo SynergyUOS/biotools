@@ -1,3 +1,6 @@
+import math
+
+import arcpy
 import arcpy.analysis
 import arcpy.management
 import pandas as pd
@@ -5,20 +8,36 @@ import pandas as pd
 from biotools import arcutils
 
 
-def get_number_of_food_resources(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, one_per_point=True) -> pd.DataFrame:
+def get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    BT_ID field will be added to `biotope_layer` permanently.
+    SP_ID field will be added to `survey_point_layer` permanently.
+    """
+    if "SP_ID" not in arcutils.get_fields(survey_point_layer):
+        arcpy.management.CalculateField(survey_point_layer, "SP_ID", f"'SP_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
+
+    if "BT_ID" not in arcutils.get_fields(biotope_layer):
+        arcpy.management.CalculateField(biotope_layer, "BT_ID", f"'BT_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
+
+    joined_survey_point_layer = arcpy.analysis.SpatialJoin(survey_point_layer, biotope_layer, "memory/joined_survey_point_layer")
+
+    survey_point_df = arcutils.layer_to_df(joined_survey_point_layer)
+    survey_point_df = pd.merge(survey_point_df, species_info_df, how="inner", left_on="국명", right_on="S_Name") # how="left"?
+
+    arcpy.management.Delete("memory/joined_survey_point_layer")
+
+    return survey_point_df
+
+
+def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, one_per_point=True) -> pd.DataFrame:
     """먹이자원 개체수
 
     종 출현 정보 Point SHP는 전처리로 먹이자원종을 먼저 설정해줘야 함.
     이 코드에서는 임위로 먹이종(곤충, 육상곤충, 포유류)을 1로, 아닌 종을 0으로 FR(Food Resources) 필드에 입력하였다.
     개체수 필드를 미리 숫자형 데이터로 변경시키고, 출현 정보는 있는데 NoData가 되어 있는 경우가 있으니, NoData를 미리 1로 채울 필요가 있음.
     """
-    arcpy.management.CalculateField(biotope_layer, "BT_ID", f"'BT_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
-    arcpy.management.CalculateField(survey_point_layer, "SP_ID", f"'SP_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
-    joined_survey_point_layer = arcpy.analysis.SpatialJoin(survey_point_layer, biotope_layer, "memory/joined_survey_point_layer")
-
     biotope_df = arcutils.layer_to_df(biotope_layer)
-    survey_point_df = arcutils.layer_to_df(joined_survey_point_layer)
-    survey_point_df = pd.merge(survey_point_df, species_info_df, how="inner", left_on="국명", right_on="S_Name") # how="left"?
+    survey_point_df = get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
     table = []
     for bt_id in survey_point_df["BT_ID"].unique():
@@ -53,3 +72,43 @@ def count_vary_per_row(df: pd.DataFrame, field: str, target: str, count_field: s
     total_count = count_s.sum()
     target_count = count_s[df[field] == target].sum()
     return target_count, total_count
+
+
+def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
+    """생물다양성
+
+    [Shannon Index](https://en.wikipedia.org/wiki/Diversity_index#Shannon_index)
+    """
+    biotope_df = arcutils.layer_to_df(biotope_layer)
+    survey_point_df = get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
+
+    table = []
+    for bt_id in survey_point_df["BT_ID"].unique():
+        if bt_id is None:
+            continue
+
+        species_list = survey_point_df[survey_point_df["BT_ID"] == bt_id]["국명"].tolist()
+        unique_species_list = list(set(species_list))
+        proportions = [species_list.count(species) / len(species_list) for species in unique_species_list]
+        shannon_index = sum(-(p * math.log2(p)) for p in proportions)
+
+        table.append([bt_id, len(species_list), shannon_index])
+
+    result = pd.DataFrame(table, columns=["BT_ID", "ALL_number", "H"])
+    result["2_Diversity_Index"] = minmax(result["H"])
+    result["H"] = result["H"].round(3)
+    result["2_Diversity_Index"] = result["2_Diversity_Index"].round(3)
+
+    result = pd.merge(biotope_df, result, on="BT_ID", how="left")
+    result.fillna(0, inplace=True)
+
+    return result
+
+def get_shannon_index(counts):
+    proportions = [count / sum(counts) for count in counts]
+    return sum(-(p * math.log2(p)) for p in proportions)
+
+def minmax(seq):
+    maximum = max(seq)
+    minimum = min(seq)
+    return [(i - minimum) / (maximum - minimum) for i in seq]

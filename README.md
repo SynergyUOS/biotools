@@ -11,7 +11,7 @@
 - [ ] 서식지
   - [ ] Habitat Size 서식지 규모 (다양성)
   - [ ] 층위구조 (다양성)
-  - [ ] Patch Isolation 패치고립도 (연결성)
+  - [x] Patch Isolation 패치고립도 (연결성)
   - [ ] Least Cost Distribution 최소비용 평균 (연결성)
   - [ ] Occurrence of Piece of Land 자투리땅 발생 가능성 (예비능력)
   - [ ] 자투리땅 활용 가능성 (예비능력)
@@ -22,5 +22,5 @@
   - [ ] Connection Strength 연결 강도 (연결성)
   - [ ] Similar Functional Species 유사기능종 (예비능력)
   - [ ] 서식확률 (예비능력)
-- [ ] docs: Prerequisites
-- [ ] docs: Usage
+- [ ] Documents
+- [ ] Flexible interface
