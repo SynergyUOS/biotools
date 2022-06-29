@@ -28,6 +28,10 @@ def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_inf
 
     return survey_point_df
 
+def _left_merge_with_default(left_df: pd.DataFrame, right_df: pd.DataFrame, on, default):
+    result_df = pd.merge(left_df, right_df, on=on, how="left")
+    result_df = result_df.fillna({field: default for field in right_df.columns})
+    return result_df
 
 def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, one_per_point=True) -> pd.DataFrame:
     """먹이자원 개체수
@@ -52,10 +56,8 @@ def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species
         number_of_food_resources = prey_count / total_count
         table.append([bt_id, prey_count, total_count, number_of_food_resources])
 
-    columns = ["BT_ID", "Prey_Snumber", "All_Snumber", "1_Number_of_Food_Resources"]
-    result_df = pd.DataFrame(table, columns=columns)
-    result_df = pd.merge(biotope_df, result_df, on="BT_ID", how="left")
-    result_df = result_df.fillna({field: 0 for field in columns[1:]})
+    result_df = pd.DataFrame(table, columns=["BT_ID", "Prey_Snumber", "All_Snumber", "1_Number_of_Food_Resources"])
+    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
 
 
@@ -90,12 +92,10 @@ def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df:
         shannon_index = _get_shannon_index(count_s)
         table.append([bt_id, count_s.sum(), shannon_index])
 
-    columns = ["BT_ID", "ALL_number", "H"]
-    result_df = pd.DataFrame(table, columns=columns)
+    result_df = pd.DataFrame(table, columns=["BT_ID", "ALL_number", "H"])
     result_df = result_df.assign(**{"2_Diversity_Index": lambda x: _minmax_normalize(x["H"])})
 
-    result_df = pd.merge(biotope_df, result_df, on="BT_ID", how="left")
-    result_df = result_df.fillna({field: 0 for field in columns[1:]})
+    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
 
 
@@ -109,9 +109,16 @@ def _minmax_normalize(seq):
     minimum = min(seq)
     return [(i - minimum) / (maximum - minimum) for i in seq]
 
-def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_layer, species_info_df):
+def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, scores: dict = None):
     """조합가능한 생산자와 소비자 (영양레벨)
     """
+    if scores is None:
+        scores = {
+            3: 1.0,
+            2: 0.6,
+            1: 0.3
+        }
+
     biotope_df = arcutils.layer_to_df(biotope_layer)
     survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
@@ -120,11 +127,13 @@ def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_laye
         if bt_id is None:
             continue
 
-        levels = survey_point_df[survey_point_df["BT_ID"] == bt_id]["D_Level"].tolist()
-        table.append([bt_id, levels.count("D1"), levels.count("D2"), levels.count("D3"), len(set(levels))])
+        count_s = survey_point_df[survey_point_df["BT_ID"] == bt_id]["D_Level"].value_counts()
+        d1_count = count_s.get("D1", 0)
+        d2_count = count_s.get("D2", 0)
+        d3_count = count_s.get("D3", 0)
+        score = scores[count_s.count()]
+        table.append([bt_id, d1_count, d2_count, d3_count, score])
 
-    result = pd.DataFrame(table, columns=["BT_ID", "D1_count", "D2_count", "D3_count", "3_Combinable_Producers_and_Consumers"])
-    result = pd.merge(biotope_df, result, on="BT_ID", how="left")
-    result.fillna(0, inplace=True)
-
-    return result
+    result_df = pd.DataFrame(table, columns=["BT_ID", "D1_count", "D2_count", "D3_count", "3_Combinable_Producers_and_Consumers"])
+    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
+    return result_df

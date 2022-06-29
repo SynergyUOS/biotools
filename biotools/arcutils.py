@@ -9,6 +9,6 @@ def get_fields(layer):
 def layer_to_df(layer):
     fields = get_fields(layer)
     table = [row for row in arcpy.da.SearchCursor(layer, fields)]
-    df = pd.DataFrame(table, columns=fields)
-    df.set_index(fields[0], inplace=True)
-    return df
+    result_df = pd.DataFrame(table, columns=fields)
+    result_df = result_df.set_index(fields[0])
+    return result_df
