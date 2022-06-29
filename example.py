@@ -19,7 +19,7 @@ def main():
     print(result_df.head())
 
     result_df = habitat.get_patch_isolation(biotope_layer)
-    print(result_df.sort_values("Buf_Area", ascending=False).head())
+    print(result_df.sort_values("PatchIsolation", ascending=False).head())
 
 
 if __name__ == "__main__":

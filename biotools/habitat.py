@@ -37,26 +37,19 @@ def get_patch_isolation(biotope_layer, habitable_codes=get_default_habitable_cod
     arcpy.management.SelectLayerByAttribute(biotope_layer, "NEW_SELECTION", query)
 
     buffer_layer = arcpy.analysis.Buffer(biotope_layer, "memory/buffer_layer", "125 Meters", "FULL", "ROUND", "NONE")
-    arcpy.management.CalculateGeometryAttributes(buffer_layer, [["Buf_Area", "AREA_GEODESIC"]], area_unit="SQUARE_METERS")
-
     in_buffer_table = arcpy.analysis.TabulateIntersection(buffer_layer, "ORIG_FID", biotope_layer,
                                                           "memory/in_buffer_table", "FID", out_units="SQUARE_METERS")
 
     arcpy.management.SelectLayerByAttribute(biotope_layer, "CLEAR_SELECTION")
 
     biotope_df = arcutils.layer_to_df(biotope_layer)
-    buffer_df = arcutils.layer_to_df(buffer_layer)
     in_buffer_df = arcutils.layer_to_df(in_buffer_table)
 
-    in_buffer_area_s = in_buffer_df.groupby("ORIG_FID").sum()["AREA"]
-    buffer_df = pd.merge(buffer_df, in_buffer_area_s, on="ORIG_FID")
-    buffer_df = buffer_df.assign(PatchIsolation=lambda x: x["AREA"] * 100 / x["Buf_Area"])
+    in_buffer_area_s = in_buffer_df.groupby("ORIG_FID").sum()["PERCENTAGE"]
 
-    merging_columns = ["ORIG_FID", "BUFF_DIST", "Buf_Area", "AREA", "PatchIsolation"]
-    buffer_df = buffer_df[merging_columns]
-
-    result_df = pd.merge(biotope_df, buffer_df, left_on="FID", right_on="ORIG_FID", how="left")
-    result_df = result_df.fillna({field: 0 for field in merging_columns[1:]})
+    result_df = pd.merge(biotope_df, in_buffer_area_s, left_index=True, right_index=True, how="left")
+    result_df = result_df.rename(columns={"PERCENTAGE": "PatchIsolation"})
+    result_df = result_df.fillna({"PatchIsolation": 0})
 
     arcpy.management.Delete("memory/buffer_layer")
     arcpy.management.Delete("memory/in_buffer_table")
