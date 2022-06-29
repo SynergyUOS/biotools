@@ -15,9 +15,10 @@ def evaluate_habitat_size(biotope_layer, lower_bounds=(50, 10, 1, 0), scores=(1,
     """
     biotope_df = arcutils.layer_to_df(biotope_layer)
     return biotope_df.assign(HaArea=lambda x: x["Area"] / 10000,
-                             Ix_BioScale=lambda x: x["HaArea"].apply(range_evaluate, lower_bounds=lower_bounds, scores=scores))
+                             Ix_BioScale=lambda x: x["HaArea"].apply(_range_evaluate, lower_bounds=lower_bounds, scores=scores))
 
-def range_evaluate(value, lower_bounds, scores):
+
+def _range_evaluate(value, lower_bounds, scores):
     for i, lower_bound in enumerate(lower_bounds):
         if value >= lower_bound:
             return scores[i]
@@ -29,6 +30,7 @@ def get_default_habitable_codes():
     for category, upper_bound in zip("HIJKLM", (12, 1, 13, 2, 5, 4)):
         result += [category + str(i) for i in range(1, upper_bound + 1)]
     return tuple(result)
+
 
 def evaluate_patch_isolation(biotope_layer, habitable_codes=get_default_habitable_codes()):
     """패치고립도

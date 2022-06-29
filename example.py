@@ -24,6 +24,9 @@ def main():
     result_df = foodchain.evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df)
     print(result_df.sort_values("2_Diversity_Index", ascending=False).head())
 
+    result_df = foodchain.evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_layer, species_info_df)
+    print(result_df.sort_values("3_Combinable_Producers_and_Consumers", ascending=False).head())
+
 
 if __name__ == "__main__":
     main()

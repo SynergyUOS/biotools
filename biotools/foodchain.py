@@ -8,7 +8,7 @@ import pandas as pd
 from biotools import arcutils
 
 
-def get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df: pd.DataFrame) -> pd.DataFrame:
+def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df: pd.DataFrame) -> pd.DataFrame:
     """
     BT_ID field will be added to `biotope_layer` permanently.
     SP_ID field will be added to `survey_point_layer` permanently.
@@ -37,7 +37,7 @@ def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species
     개체수 필드를 미리 숫자형 데이터로 변경시키고, 출현 정보는 있는데 NoData가 되어 있는 경우가 있으니, NoData를 미리 1로 채울 필요가 있음.
     """
     biotope_df = arcutils.layer_to_df(biotope_layer)
-    survey_point_df = get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
+    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
     table = []
     for bt_id in survey_point_df["BT_ID"].unique():
@@ -45,9 +45,9 @@ def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species
             continue
 
         if one_per_point:
-            prey_count, total_count = count_one_per_row(survey_point_df[survey_point_df["BT_ID"] == bt_id], "Owls_foods", "Prey_S")
+            prey_count, total_count = _count_one_per_row(survey_point_df[survey_point_df["BT_ID"] == bt_id], "Owls_foods", "Prey_S")
         else:
-            prey_count, total_count = count_vary_per_row(survey_point_df[survey_point_df["BT_ID"] == bt_id], "Owls_foods", "Prey_S", "개체수")
+            prey_count, total_count = _count_vary_per_row(survey_point_df[survey_point_df["BT_ID"] == bt_id], "Owls_foods", "Prey_S", "개체수")
 
         number_of_food_resources = prey_count / total_count
         table.append([bt_id, prey_count, total_count, number_of_food_resources])
@@ -58,13 +58,15 @@ def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species
     result_df = result_df.fillna({field: 0 for field in columns[1:]})
     return result_df
 
-def count_one_per_row(df: pd.DataFrame, field: str, target: str):
+
+def _count_one_per_row(df: pd.DataFrame, field: str, target: str):
     seq = df[field].tolist()
     total_count = len(seq)
     target_count = seq.count(target)
     return target_count, total_count
 
-def count_vary_per_row(df: pd.DataFrame, field: str, target: str, count_field: str):
+
+def _count_vary_per_row(df: pd.DataFrame, field: str, target: str, count_field: str):
     count_s = pd.to_numeric(df[count_field], errors="coerce").fillna(1)
     total_count = count_s.sum()
     target_count = count_s[df[field] == target].sum()
@@ -77,7 +79,7 @@ def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df:
     [Shannon Index](https://en.wikipedia.org/wiki/Diversity_index#Shannon_index)
     """
     biotope_df = arcutils.layer_to_df(biotope_layer)
-    survey_point_df = get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
+    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
     table = []
     for bt_id in survey_point_df["BT_ID"].unique():
@@ -85,22 +87,44 @@ def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df:
             continue
 
         count_s = survey_point_df[survey_point_df["BT_ID"] == bt_id]["국명"].value_counts()
-        shannon_index = get_shannon_index(count_s)
+        shannon_index = _get_shannon_index(count_s)
         table.append([bt_id, count_s.sum(), shannon_index])
 
     columns = ["BT_ID", "ALL_number", "H"]
     result_df = pd.DataFrame(table, columns=columns)
-    result_df = result_df.assign(**{"2_Diversity_Index": lambda x: minmax_normalize(x["H"])})
+    result_df = result_df.assign(**{"2_Diversity_Index": lambda x: _minmax_normalize(x["H"])})
 
     result_df = pd.merge(biotope_df, result_df, on="BT_ID", how="left")
     result_df = result_df.fillna({field: 0 for field in columns[1:]})
     return result_df
 
-def get_shannon_index(counts):
+
+def _get_shannon_index(counts):
     proportions = [count / sum(counts) for count in counts]
     return sum(-(p * math.log2(p)) for p in proportions)
 
-def minmax_normalize(seq):
+
+def _minmax_normalize(seq):
     maximum = max(seq)
     minimum = min(seq)
     return [(i - minimum) / (maximum - minimum) for i in seq]
+
+def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_layer, species_info_df):
+    """조합가능한 생산자와 소비자 (영양레벨)
+    """
+    biotope_df = arcutils.layer_to_df(biotope_layer)
+    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
+
+    table = []
+    for bt_id in survey_point_df["BT_ID"].unique():
+        if bt_id is None:
+            continue
+
+        levels = survey_point_df[survey_point_df["BT_ID"] == bt_id]["D_Level"].tolist()
+        table.append([bt_id, levels.count("D1"), levels.count("D2"), levels.count("D3"), len(set(levels))])
+
+    result = pd.DataFrame(table, columns=["BT_ID", "D1_count", "D2_count", "D3_count", "3_Combinable_Producers_and_Consumers"])
+    result = pd.merge(biotope_df, result, on="BT_ID", how="left")
+    result.fillna(0, inplace=True)
+
+    return result
