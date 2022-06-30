@@ -27,8 +27,11 @@ def main():
     result_df = foodchain.evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_layer, species_info_df)
     print(result_df.sort_values("3_Combinable_Producers_and_Consumers", ascending=False).head())
 
-    result_df = foodchain.get_connection_strength(biotope_layer, survey_point_layer, species_info_df)
+    result_df = foodchain.evaluate_connection_strength(biotope_layer, survey_point_layer, species_info_df)
     print(result_df.sort_values("Prey_Snumber", ascending=False).head())
+
+    result_df = foodchain.evaluate_similar_functional_species(biotope_layer, survey_point_layer, species_info_df)
+    print(result_df.sort_values("Alt_S", ascending=False).head())
 
 
 if __name__ == "__main__":

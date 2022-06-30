@@ -20,7 +20,7 @@
   - [x] Diversity Index 종다양성 (다양성)
   - [x] Combinable Producers and Consumers 조합가능한 생산자와 소비자 (연결성)
   - [x] Connection Strength 연결 강도 (연결성)
-  - [ ] Similar Functional Species 유사기능종 (예비능력)
+  - [x] Similar Functional Species 유사기능종 (예비능력)
   - [ ] 서식확률 (예비능력)
 - [ ] Documents
 - [ ] Flexible interface

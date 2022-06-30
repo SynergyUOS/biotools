@@ -28,10 +28,12 @@ def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_inf
 
     return survey_point_df
 
+
 def _left_merge_with_default(left_df: pd.DataFrame, right_df: pd.DataFrame, on, default):
     result_df = pd.merge(left_df, right_df, on=on, how="left")
     result_df = result_df.fillna({field: default for field in right_df.columns})
     return result_df
+
 
 def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, one_per_point=True) -> pd.DataFrame:
     """먹이자원 개체수
@@ -109,6 +111,7 @@ def _minmax_normalize(seq):
     minimum = min(seq)
     return [(i - minimum) / (maximum - minimum) for i in seq]
 
+
 def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, scores: dict = None):
     """조합가능한 생산자와 소비자 (영양레벨)
     """
@@ -139,7 +142,7 @@ def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_laye
     return result_df
 
 
-def get_connection_strength(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
+def evaluate_connection_strength(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
     """연결강도"""
     biotope_df = arcutils.layer_to_df(biotope_layer)
     survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
@@ -154,5 +157,35 @@ def get_connection_strength(biotope_layer, survey_point_layer, species_info_df: 
         table.append([bt_id, prey_count, int(prey_count > 0)])
 
     result_df = pd.DataFrame(table, columns=["BT_ID", "Prey_Snumber", "4_Connection_Strength"])
+    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
+    return result_df
+
+
+def evaluate_similar_functional_species(biotope_layer, survey_point_layer, species_info_df):
+    """유사기능종"""
+    biotope_df = arcutils.layer_to_df(biotope_layer)
+    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
+
+    table = []
+    for bt_id in survey_point_df["BT_ID"].unique():
+        if bt_id is None:
+            continue
+
+        count_s = survey_point_df.loc[survey_point_df["BT_ID"] == bt_id]["Alternative_S"].value_counts()
+        threatened_count = count_s.get("Threatened_S", 0)
+        alt_alien_count = count_s.get("Alt_Alien_S", 0)
+        alt_count = count_s.get("Alt_S", 0)
+        normal_count = count_s.get("Normal_S", 0)
+
+        if alt_count > 0:
+            similar_functional_species = 1
+        elif alt_alien_count > 0:
+            similar_functional_species = 0.5
+        else:
+            similar_functional_species = 0
+
+        table.append([bt_id, threatened_count, alt_alien_count, alt_count, normal_count, similar_functional_species])
+
+    result_df = pd.DataFrame(table, columns=["BT_ID", "Threatened_S", "Alt_Alien_S", "Alt_S", "Normal_S", "5_Similar_Functional_Species"])
     result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
