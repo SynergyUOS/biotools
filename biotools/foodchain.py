@@ -5,7 +5,7 @@ import arcpy.analysis
 import arcpy.management
 import pandas as pd
 
-from biotools import arcutils
+from biotools import arcutils, pdplus
 
 
 def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df: pd.DataFrame) -> pd.DataFrame:
@@ -27,12 +27,6 @@ def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_inf
     arcpy.management.Delete("memory/joined_survey_point_layer")
 
     return survey_point_df
-
-
-def _left_merge_with_default(left_df: pd.DataFrame, right_df: pd.DataFrame, on, default):
-    result_df = pd.merge(left_df, right_df, on=on, how="left")
-    result_df = result_df.fillna({field: default for field in right_df.columns})
-    return result_df
 
 
 def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, one_per_point=True) -> pd.DataFrame:
@@ -59,7 +53,7 @@ def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species
         table.append([bt_id, prey_count, total_count, number_of_food_resources])
 
     result_df = pd.DataFrame(table, columns=["BT_ID", "Prey_Snumber", "All_Snumber", "1_Number_of_Food_Resources"])
-    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
+    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
 
 
@@ -97,7 +91,7 @@ def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df:
     result_df = pd.DataFrame(table, columns=["BT_ID", "ALL_number", "H"])
     result_df = result_df.assign(**{"2_Diversity_Index": lambda x: _minmax_normalize(x["H"])})
 
-    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
+    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
 
 
@@ -138,7 +132,7 @@ def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_laye
         table.append([bt_id, d1_count, d2_count, d3_count, score])
 
     result_df = pd.DataFrame(table, columns=["BT_ID", "D1_count", "D2_count", "D3_count", "3_Combinable_Producers_and_Consumers"])
-    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
+    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
 
 
@@ -157,7 +151,7 @@ def evaluate_connection_strength(biotope_layer, survey_point_layer, species_info
         table.append([bt_id, prey_count, int(prey_count > 0)])
 
     result_df = pd.DataFrame(table, columns=["BT_ID", "Prey_Snumber", "4_Connection_Strength"])
-    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
+    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
 
 
@@ -187,5 +181,5 @@ def evaluate_similar_functional_species(biotope_layer, survey_point_layer, speci
         table.append([bt_id, threatened_count, alt_alien_count, alt_count, normal_count, similar_functional_species])
 
     result_df = pd.DataFrame(table, columns=["BT_ID", "Threatened_S", "Alt_Alien_S", "Alt_S", "Normal_S", "5_Similar_Functional_Species"])
-    result_df = _left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
+    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df

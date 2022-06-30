@@ -1,8 +1,9 @@
 import arcpy.analysis
 import arcpy.management
+import arcpy.sa
 import pandas as pd
 
-from biotools import arcutils
+from biotools import arcutils, pdplus
 
 
 def evaluate_habitat_size(biotope_layer, lower_bounds=(50, 10, 1, 0), scores=(1, 0.5, 0.3, 0.2, 0)):
@@ -57,3 +58,32 @@ def evaluate_patch_isolation(biotope_layer, habitable_codes=get_default_habitabl
     arcpy.management.Delete("memory/in_buffer_table")
 
     return result_df
+
+
+def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, cell_size=0.00001):
+    """자투리땅 발생 가능성
+
+    Option: 경기도 전체에서 Euq하면 계산 처리가 불가능할 수도 있으니 비오톱 지도 범위만 선택해서 Euclidean Distance를 하는게 좋음.
+    CellSize: Defalt는 1m. 분석지역의 비오톱지도 중 가장 작은 비오톱에 하나 이상의 셀이 들어갈 수 있도록 설정함.
+    가장 작은 비오톱보다 셀 사이즈가 크면 Zonal Statistics에서 계산 못함.
+    (ITRF -> 1, WGS -> 0.00001)
+    """
+    selected_commercial_point_layer = arcpy.management.SelectLayerByLocation(commercial_point_layer, "INTERSECT", biotope_layer, "5 Kilometers")
+    distance_raster = arcpy.sa.EucDistance(selected_commercial_point_layer, cell_size=cell_size)
+
+    result_table = arcpy.sa.ZonalStatisticsAsTable(
+        biotope_layer, "FID", distance_raster, "memory/result_table", "DATA", "MINIMUM", "CURRENT_SLICE", 90, "AUTO_DETECT")
+
+    biotope_df = arcutils.layer_to_df(biotope_layer)
+    result_df = arcutils.layer_to_df(result_table)
+
+    max_distance = result_df["MIN"].max()
+    result_df = result_df.assign(result=lambda x: x["MIN"] / max_distance)
+    result_df = result_df.rename(columns={
+        "COUNT": "H5_COUNT",
+        "AREA": "H5_AREA",
+        "MIN": "H5_MIN",
+        "result": "H5_RESULT"
+    })
+
+    return pdplus.left_merge_with_default(biotope_df, result_df, on="FID", default=0)
