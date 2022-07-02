@@ -30,7 +30,7 @@ def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_inf
 
 
 def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, one_per_point=True) -> pd.DataFrame:
-    """먹이자원 개체수
+    """F1 - 먹이자원 개체수
 
     종 출현 정보 Point SHP는 전처리로 먹이자원종을 먼저 설정해줘야 함.
     이 코드에서는 임위로 먹이종(곤충, 육상곤충, 포유류)을 1로, 아닌 종을 0으로 FR(Food Resources) 필드에 입력하였다.
@@ -72,7 +72,7 @@ def _count_vary_per_row(df: pd.DataFrame, field: str, target: str, count_field: 
 
 
 def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
-    """생물다양성
+    """F2 - 생물다양성
 
     [Shannon Index](https://en.wikipedia.org/wiki/Diversity_index#Shannon_index)
     """
@@ -107,8 +107,7 @@ def _minmax_normalize(seq):
 
 
 def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, scores: dict = None):
-    """조합가능한 생산자와 소비자 (영양레벨)
-    """
+    """F3 - 조합가능한 생산자와 소비자 (영양레벨)"""
     if scores is None:
         scores = {
             3: 1.0,
@@ -137,7 +136,7 @@ def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_laye
 
 
 def evaluate_connection_strength(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
-    """연결강도"""
+    """F4 - 연결강도"""
     biotope_df = arcutils.layer_to_df(biotope_layer)
     survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
@@ -156,7 +155,7 @@ def evaluate_connection_strength(biotope_layer, survey_point_layer, species_info
 
 
 def evaluate_similar_functional_species(biotope_layer, survey_point_layer, species_info_df):
-    """유사기능종"""
+    """F5 - 유사기능종"""
     biotope_df = arcutils.layer_to_df(biotope_layer)
     survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 

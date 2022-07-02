@@ -1,3 +1,6 @@
+import subprocess
+
+import arcpy
 import arcpy.analysis
 import arcpy.management
 import arcpy.sa
@@ -7,7 +10,7 @@ from biotools import arcutils, pdplus
 
 
 def evaluate_habitat_size(biotope_layer, lower_bounds=(50, 10, 1, 0), scores=(1, 0.5, 0.3, 0.2, 0)):
-    """서식지 규모
+    """H1 - 서식지 규모
 
     ### To Do
     * arcpy로 비오톱 합치기
@@ -34,7 +37,7 @@ def get_default_habitable_codes():
 
 
 def evaluate_patch_isolation(biotope_layer, habitable_codes=get_default_habitable_codes()):
-    """패치고립도
+    """H3 - 패치고립도
     """
     query = " OR ".join([f"비오톱 = '{code}'" for code in habitable_codes])
     arcpy.management.SelectLayerByAttribute(biotope_layer, "NEW_SELECTION", query)
@@ -60,8 +63,58 @@ def evaluate_patch_isolation(biotope_layer, habitable_codes=get_default_habitabl
     return result_df
 
 
+def run_maxent(**kwargs):
+    command = f"java -mx512m -jar biotools/lib/maxent.jar {kwargs_to_command(kwargs)}"
+    subprocess.run(command)
+    return kwargs["outputdirectory"]
+    # return "input/maxent_result/까마귀.asc"
+
+
+def kwargs_to_command(kwargs):
+    commands = [f"{param}={arg}" for param, arg in kwargs.items()]
+    return " ".join(commands)
+
+
+def evaluate_least_cost_distribution(biotope_layer, keystone_csv):
+    """H4 - 서식지 연결성"""
+    keystone_probability_asc = run_maxent(
+        environmentallayers="path/to/env",
+        samplesfile=keystone_csv,
+        outputdirectory="path/to/result",
+        #### Options of basicRun
+        redoifexists=True,
+        autorun=True,
+        autofeature=True,
+        responsecurves=True,
+        jackknife=True,
+        #### Options of advancdRun
+        # writeplotdata=True,
+        # appendtoresultsfile=False, # 결과파일(maxentResults.csv) 초기화(f)/추가(T)
+        # writebackgroundpredictions=True
+    )
+    keystone_probability_raster = arcpy.management.CopyRaster(keystone_probability_asc, "memory/keystone_probability_raster")
+    arcpy.management.DefineProjection(keystone_probability_raster, "biotools/res/ITRF_2000_UTM_K.prj")
+
+    with arcpy.EnvManager(outputCoordinateSystem="biotools/res/WGS1984.prj"):
+        result_table = arcpy.sa.ZonalStatisticsAsTable(
+            biotope_layer, arcutils.get_oid_field(biotope_layer),
+            keystone_probability_raster, "memory/result_table",
+            "DATA", "MEAN", "CURRENT_SLICE")
+
+    biotope_df = arcutils.layer_to_df(biotope_layer)
+    result_df = arcutils.layer_to_df(result_table)
+
+    result_df = result_df.assign(H4_RESULT=lambda x: 1 - x["MEAN"])
+    result_df = result_df.drop(columns=["MEAN"])
+    result_df = result_df.rename(columns={
+        "COUNT": "H4_COUNT",
+        "AREA": "H4_AREA",
+    })
+    return pdplus.left_merge_with_default(biotope_df, result_df, on="FID", default=0)
+
+
 def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, cell_size=0.00001):
-    """자투리땅 발생 가능성
+    """H5 - 자투리땅 발생 가능성
 
     Option: 경기도 전체에서 Euq하면 계산 처리가 불가능할 수도 있으니 비오톱 지도 범위만 선택해서 Euclidean Distance를 하는게 좋음.
     CellSize: Defalt는 1m. 분석지역의 비오톱지도 중 가장 작은 비오톱에 하나 이상의 셀이 들어갈 수 있도록 설정함.
@@ -85,5 +138,4 @@ def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, 
         "MIN": "H5_MIN",
         "result": "H5_RESULT"
     })
-
     return pdplus.left_merge_with_default(biotope_df, result_df, on="FID", default=0)

@@ -3,7 +3,8 @@
 
 ## Prerequisites
 * ArcGIS Pro 설치
-* `arcgispro-py3` 환경 설정
+* arcgispro-py3 환경 설정
+* Java 1.4+ 설치
 
 ## Usage
 
@@ -12,8 +13,8 @@
   - [x] Habitat Size 서식지 규모 (다양성)
   - [ ] 층위구조 (다양성)
   - [x] Patch Isolation 패치고립도 (연결성)
-  - [ ] Least Cost Distribution 최소비용 평균 (연결성)
-  - [ ] Occurrence of Piece of Land 자투리땅 발생 가능성 (예비능력)
+  - [x] Least Cost Distribution 최소비용 평균 (연결성)
+  - [x] Occurrence of Piece of Land 자투리땅 발생 가능성 (예비능력)
   - [ ] 자투리땅 활용 가능성 (예비능력)
 - [ ] 먹이사슬
   - [x] Number of Food Resources 먹이자원의 개체 수 (다양성)
