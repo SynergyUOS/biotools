@@ -95,7 +95,7 @@ def evaluate_least_cost_distribution(biotope_layer, keystone_csv):
     keystone_probability_raster = arcpy.management.CopyRaster(keystone_probability_asc, "memory/keystone_probability_raster")
     arcpy.management.DefineProjection(keystone_probability_raster, "biotools/res/ITRF_2000_UTM_K.prj")
 
-    with arcpy.EnvManager(outputCoordinateSystem="biotools/res/WGS1984.prj"):
+    with arcpy.EnvManager(outputCoordinateSystem="biotools/res/GCS_WGS_1984.prj"):
         result_table = arcpy.sa.ZonalStatisticsAsTable(
             biotope_layer, arcutils.get_oid_field(biotope_layer),
             keystone_probability_raster, "memory/result_table",
@@ -127,6 +127,8 @@ def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, 
     result_table = arcpy.sa.ZonalStatisticsAsTable(
         biotope_layer, "FID", distance_raster, "memory/result_table", "DATA", "MINIMUM", "CURRENT_SLICE", 90, "AUTO_DETECT")
 
+    arcpy.management.SelectLayerByAttribute(biotope_layer, "CLEAR_SELECTION")
+
     biotope_df = arcutils.layer_to_df(biotope_layer)
     result_df = arcutils.layer_to_df(result_table)
 
@@ -139,3 +141,46 @@ def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, 
         "result": "H5_RESULT"
     })
     return pdplus.left_merge_with_default(biotope_df, result_df, on="FID", default=0)
+
+
+def evaluate_availability_of_piece_of_land(biotope_layer, keystone_probability_asc):
+    """H6 - 자투리땅 활용 가능성"""
+    # run maxent
+
+    arcutils.fix_fid(biotope_layer)
+
+    keystone_probability_raster = arcutils.load_asc(keystone_probability_asc,
+                                                    arcutils.ITRF2000_PRJ)
+
+    main_habitat_raster = arcpy.sa.Con(arcpy.Raster(keystone_probability_raster) >= 0.5, 1)
+    distance_raster = arcpy.sa.EucDistance(main_habitat_raster, cell_size=30)
+
+    query = arcutils.make_isin_query("비오톱", [16])
+    arcpy.management.SelectLayerByAttribute(biotope_layer, "NEW_SELECTION", query)
+
+    with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+        result_table = arcpy.sa.ZonalStatisticsAsTable(
+            biotope_layer,
+            "BT_ID",
+            distance_raster,
+            "memory/result_table",
+            statistics_type="MINIMUM"
+        )
+
+    arcpy.management.SelectLayerByAttribute(biotope_layer, "CLEAR_SELECTION")
+    arcpy.management.Delete(keystone_probability_raster)
+
+    result_df = arcutils.layer_to_df(result_table)
+    maximum = result_df["MIN"].max()
+    result_df = result_df.assign(H6_RESULT=lambda x: 1 - (x["MIN"] / maximum))
+    result_df = result_df.rename(columns={
+        "COUNT": "H6_COUNT",
+        "AREA": "H6_AREA",
+        "MIN": "H6_MIN",
+    })
+    result_df = result_df.drop(columns="ZONE_CODE")
+
+    biotope_df = arcutils.layer_to_df(biotope_layer)
+    result_df = pd.merge(biotope_df["BT_ID"], result_df, on="BT_ID", how="left")
+    result_df = result_df.fillna({"H6_RESULT": 0})
+    return result_df
