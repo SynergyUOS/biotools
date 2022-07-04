@@ -182,3 +182,6 @@ def evaluate_similar_functional_species(biotope_layer, survey_point_layer, speci
     result_df = pd.DataFrame(table, columns=["BT_ID", "Threatened_S", "Alt_Alien_S", "Alt_S", "Normal_S", "5_Similar_Functional_Species"])
     result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
+
+def evaluate_inhabitation_of_food_resources(biotope_shp, surveypoint_shp):
+    pass
