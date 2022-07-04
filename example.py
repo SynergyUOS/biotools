@@ -14,6 +14,9 @@ def main():
     result_df = habitat.evaluate_habitat_size(biotope_layer)
     print(result_df.head())
 
+    result_df = habitat.evaluate_structured_layer(biotope_layer)
+    print(result_df.sort_values("H2_HERB", ascending=False).head())
+
     result_df = habitat.evaluate_patch_isolation(biotope_layer)
     print(result_df.sort_values("PatchIsolation", ascending=False).head())
 

@@ -9,8 +9,12 @@ import pandas as pd
 from biotools import arcutils, pdplus
 
 
-def evaluate_habitat_size(biotope_layer, lower_bounds=(50, 10, 1, 0), scores=(1, 0.5, 0.3, 0.2, 0)):
-    """H1 - 서식지 규모
+def evaluate_habitat_size(
+    biotope_layer,
+    lower_bounds=(50, 10, 1, 0),
+    scores=(1, 0.5, 0.3, 0.2, 0)
+) -> pd.DataFrame:
+    """H1. 서식지 다양성 - 서식지 규모
 
     ### To Do
     * arcpy로 비오톱 합치기
@@ -27,6 +31,45 @@ def _range_evaluate(value, lower_bounds, scores):
         if value >= lower_bound:
             return scores[i]
     return scores[-1]
+
+
+def evaluate_structured_layer(biotope_shp):
+    """H2. 서식지 다양성 - 층위구조"""
+    arcutils.fix_fid(biotope_shp)
+
+    biotope_df = arcutils.layer_to_df(biotope_shp)
+
+    # temporary data creation
+    import random
+    result_df = biotope_df[["BT_ID"]].assign(
+        HERB=random.choices(["N", "Y"], weights=[1, 1], k=len(biotope_df)),
+        SHRUB=random.choices(["N", "Y"], weights=[3, 1], k=len(biotope_df)),
+        TREE=random.choices(["N", "Y"], weights=[4, 1], k=len(biotope_df))
+    )
+
+    is_green_s = ~biotope_df["비오톱"].isin(arcutils.get_biotope_codes(range(1, 9)))
+    green_df = result_df[is_green_s]
+    green_df = _score_structured_layer(green_df)
+    green_df = green_df.rename(columns={
+        "HERB": "H2_HERB",
+        "SHRUB": "H2_SHRUB",
+        "TREE": "H2_TREE",
+        "SCORE": "H2_RESULT"
+    })
+    result_df = biotope_df.merge(green_df, how="left", on="BT_ID")
+    result_df = result_df.fillna({"H2_RESULT": 0})
+    return result_df
+
+
+def _score_structured_layer(df: pd.DataFrame, scores=(0.3, 0.6, 1)):
+    result_df = df.copy()
+    p = (df["HERB"] == "Y")
+    q = (df["SHRUB"] == "Y")
+    r = (df["TREE"] == "Y")
+    score_s = p.astype(int) + q.astype(int) + r.astype(int)
+    score_s = score_s.apply(lambda x: scores[x - 1])
+    result_df = result_df.assign(SCORE=score_s)
+    return result_df
 
 
 def get_default_habitable_codes():
