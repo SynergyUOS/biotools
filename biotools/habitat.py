@@ -1,4 +1,6 @@
-import subprocess
+from os import PathLike
+from pathlib import Path
+from typing import Union
 
 import arcpy
 import arcpy.analysis
@@ -6,7 +8,7 @@ import arcpy.management
 import arcpy.sa
 import pandas as pd
 
-from biotools import arcutils, pdplus
+from biotools import arcutils, pdplus, maxent
 
 
 def evaluate_habitat_size(
@@ -106,54 +108,45 @@ def evaluate_patch_isolation(biotope_layer, habitable_codes=get_default_habitabl
     return result_df
 
 
-def run_maxent(**kwargs):
-    command = f"java -mx512m -jar biotools/lib/maxent.jar {kwargs_to_command(kwargs)}"
-    subprocess.run(command)
-    return kwargs["outputdirectory"]
-    # return "input/maxent_result/까마귀.asc"
-
-
-def kwargs_to_command(kwargs):
-    commands = [f"{param}={arg}" for param, arg in kwargs.items()]
-    return " ".join(commands)
-
-
-def evaluate_least_cost_distribution(biotope_layer, keystone_csv):
+def evaluate_least_cost_distribution(
+    biotope_shp: Union[str, PathLike],
+    keystone_csv: Union[str, PathLike],
+    environmentallayer_directory: Union[str, PathLike],
+    result_directory: Union[str, PathLike]
+):
     """H4 - 서식지 연결성"""
-    keystone_probability_asc = run_maxent(
-        environmentallayers="path/to/env",
-        samplesfile=keystone_csv,
-        outputdirectory="path/to/result",
-        #### Options of basicRun
-        redoifexists=True,
-        autorun=True,
-        autofeature=True,
-        responsecurves=True,
-        jackknife=True,
-        #### Options of advancdRun
-        # writeplotdata=True,
-        # appendtoresultsfile=False, # 결과파일(maxentResults.csv) 초기화(f)/추가(T)
-        # writebackgroundpredictions=True
+
+    base_dir = Path(result_directory)
+    process_dir = base_dir / "process"
+    maxent_dir = process_dir / (Path(keystone_csv).stem + "_maxent")
+
+    ascs = maxent.run_maxent(
+        keystone_csv,
+        environmentallayer_directory,
+        maxent_dir
     )
-    keystone_probability_raster = arcpy.management.CopyRaster(keystone_probability_asc, "memory/keystone_probability_raster")
-    arcpy.management.DefineProjection(keystone_probability_raster, "biotools/res/ITRF_2000_UTM_K.prj")
 
-    with arcpy.EnvManager(outputCoordinateSystem="biotools/res/GCS_WGS_1984.prj"):
+    with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
         result_table = arcpy.sa.ZonalStatisticsAsTable(
-            biotope_layer, arcutils.get_oid_field(biotope_layer),
-            keystone_probability_raster, "memory/result_table",
-            "DATA", "MEAN", "CURRENT_SLICE")
-
-    biotope_df = arcutils.layer_to_df(biotope_layer)
+            biotope_shp,
+            "BT_ID",
+            str(ascs[0]),
+            "memory/result_table",
+            statistics_type="MEAN"
+        )
     result_df = arcutils.layer_to_df(result_table)
+    arcpy.management.Delete(result_table)
 
     result_df = result_df.assign(H4_RESULT=lambda x: 1 - x["MEAN"])
-    result_df = result_df.drop(columns=["MEAN"])
+    result_df = result_df.drop(columns=["MEAN", "ZONE_CODE"])
     result_df = result_df.rename(columns={
         "COUNT": "H4_COUNT",
         "AREA": "H4_AREA",
     })
-    return pdplus.left_merge_with_default(biotope_df, result_df, on="FID", default=0)
+    biotope_df = arcutils.layer_to_df(biotope_shp)
+    result_df = biotope_df.merge(result_df, how="left", on="BT_ID")
+    result_df = result_df.fillna({"H4_RESULT": 0})
+    return result_df
 
 
 def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, cell_size=0.00001):

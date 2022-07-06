@@ -49,7 +49,6 @@ def run_maxent(samplesfile: PathLike,
 
     Path(outputdirectory).mkdir(parents=True, exist_ok=True)
 
-    print(1)
     with importlib.resources.path("biotools.lib", "maxent.jar") as path:
         command = [
             "java", "-mx512m", "-jar", path,
