@@ -1,4 +1,5 @@
 import io
+from os import PathLike
 import pathlib
 import pkgutil
 
@@ -43,7 +44,8 @@ def get_oid_field(layer):
     return arcpy.ListFields(layer, field_type="OID")[0].name
 
 
-def layer_to_df(layer):
+def layer_to_df(layer: PathLike):
+    layer = str(layer)
     fields = get_fields(layer)
     table = [row for row in arcpy.da.SearchCursor(layer, fields)]
     result_df = pd.DataFrame(table, columns=fields)

@@ -7,11 +7,28 @@
 * Set `conda` environment to `arcgispro-py3`
 
 ## Data Preparation
-* Biotope Map (도시생태현황도)
-* Keystone Species Survey Point Table (핵심종 출현정보)
-* Commercial Area Point Table (유동인구 or 발달상권 데이터)
-* Species Survey Point Map (생물종 출현정보)
-* Species' Foodchain Information Table (먹이사슬 관계정보)
+Biotope Map (도시생태현황도):
+* .shp
+* PCS_ITRF2000_TM
+
+Keystone Species Survey Point Table (핵심종 출현정보):
+* .csv
+* ITRF_2000_UTM_K
+
+Environmental Layers (환경변수지도):
+* .asc
+* ITRF_2000_UTM_K
+
+Commercial Area Point Table (유동인구 or 발달상권 데이터):
+* .csv
+* GCS_WGS_1984
+
+Species Survey Point Map (생물종 출현정보):
+* .csv
+* PCS_ITRF2000_TM
+
+Species' Foodchain Information Table (먹이사슬 관계정보):
+* .csv
 
 ## Usage
 
@@ -29,6 +46,6 @@
   - [x] 9. Combinable Producers and Consumers (조합가능한 생산자와 소비자)
   - [x] 10. Connection Strength (연결 강도)
   - [x] 11. Similar Functional Species (유사기능종)
-  - [ ] 12. Inhabitation of Food Resources (먹이자원 서식확률)
+  - [x] 12. Inhabitation of Food Resources (먹이자원 서식확률)
 - [ ] Documentation
 - [ ] Flexible interface

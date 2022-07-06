@@ -1,11 +1,15 @@
 import math
+from os import PathLike
+from pathlib import Path
+
 
 import arcpy
 import arcpy.analysis
 import arcpy.management
+import arcpy.sa
 import pandas as pd
 
-from biotools import arcutils, pdplus
+from biotools import arcutils, maxent, pdplus
 
 
 def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df: pd.DataFrame) -> pd.DataFrame:
@@ -183,5 +187,85 @@ def evaluate_similar_functional_species(biotope_layer, survey_point_layer, speci
     result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
     return result_df
 
-def evaluate_inhabitation_of_food_resources(biotope_shp, surveypoint_shp):
-    pass
+
+def evaluate_inhabitation_of_food_resources(
+    biotope_shp: PathLike,
+    surveypoint_shp: PathLike,
+    environmentallayer_directory: PathLike,
+    result_directory: PathLike
+):
+    """F6 - 먹이자원 서식확률"""
+    base_dir = Path(result_directory)
+    process_dir = base_dir / "process"
+    result_dir = base_dir / "f6_result"
+
+    process_dir.mkdir(parents=True, exist_ok=True)
+    result_dir.mkdir(parents=True, exist_ok=True)
+
+    new_name = augment_name(Path(surveypoint_shp).name, "_ITRF")
+    surveypoint_itrf_shp = process_dir / new_name
+
+    if not surveypoint_itrf_shp.exists():
+        arcpy.management.Project(
+            surveypoint_shp,
+            str(process_dir / new_name),
+            arcutils.ITRF2000_PRJ
+        )
+
+
+    surveypoint_itrf_df = arcutils.layer_to_df(surveypoint_itrf_shp)
+    sample_df = surveypoint_itrf_df[["국명", "Shape"]]
+    sample_df = sample_df.assign(
+        LONGITUDE=lambda x: x["Shape"].apply(lambda x: x[0]),
+        LATITUDE=lambda x: x["Shape"].apply(lambda x: x[1]),
+    )
+    sample_df = sample_df.drop(columns="Shape")
+
+    sample_name = augment_name(surveypoint_itrf_shp, "_sample").with_suffix(".csv")
+    sample_csv = process_dir / sample_name
+    sample_df.to_csv(sample_csv, index=False, encoding="euc-kr")
+
+
+    ascs = maxent.run_maxent(
+        sample_csv,
+        environmentallayer_directory,
+        process_dir / (sample_csv.stem + "_maxent"),
+    )
+
+    mean_name = augment_name(sample_name, "_maxent_mean").with_suffix(".tif")
+    mean_tif = process_dir / mean_name
+
+    if not mean_tif.exists():
+        mean_raster = arcpy.sa.CellStatistics(
+            [str(asc) for asc in ascs],
+            "MEAN"
+        )
+        mean_raster.save(str(mean_tif))
+
+    with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+        result_table = arcpy.sa.ZonalStatisticsAsTable(
+            biotope_shp,
+            "BT_ID",
+            str(mean_tif),
+            "memory/result_table",
+            statistics_type="MEAN"
+        )
+    result_df = arcutils.layer_to_df(result_table)
+    arcpy.management.Delete(result_table)
+
+    result_df = result_df.rename(columns={
+        "COUNT": "F6_COUNT",
+        "AREA": "F6_AREA",
+        "MEAN": "F6_RESULT",
+    })
+    result_df = result_df.drop(columns="ZONE_CODE")
+
+    biotope_df = arcutils.layer_to_df(biotope_shp)
+    result_df = biotope_df.merge(result_df, how="left", on="BT_ID")
+    result_df = result_df.fillna({"F6_RESULT": 0})
+    return result_df
+
+
+def augment_name(path: PathLike, word: str) -> Path:
+    path = Path(path)
+    return path.with_stem(path.stem + word)
