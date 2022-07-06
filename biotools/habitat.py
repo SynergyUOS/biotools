@@ -179,34 +179,45 @@ def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, 
     return pdplus.left_merge_with_default(biotope_df, result_df, on="FID", default=0)
 
 
-def evaluate_availability_of_piece_of_land(biotope_layer, keystone_probability_asc):
+def evaluate_availability_of_piece_of_land(
+    biotope_shp: Union[str, PathLike],
+    keystone_csv: Union[str, PathLike],
+    environmentallayer_directory: Union[str, PathLike],
+    result_directory: Union[str, PathLike]
+):
     """H6 - 자투리땅 활용 가능성"""
     # run maxent
 
-    arcutils.fix_fid(biotope_layer)
+    # arcutils.fix_fid(biotope_shp)
+    base_dir = Path(result_directory)
+    process_dir = base_dir / "process"
+    maxent_dir = process_dir / (Path(keystone_csv).stem + "_maxent")
 
-    keystone_probability_raster = arcutils.load_asc(keystone_probability_asc,
-                                                    arcutils.ITRF2000_PRJ)
+    ascs = maxent.run_maxent(
+        keystone_csv,
+        environmentallayer_directory,
+        maxent_dir
+    )
 
-    main_habitat_raster = arcpy.sa.Con(arcpy.Raster(keystone_probability_raster) >= 0.5, 1)
-    distance_raster = arcpy.sa.EucDistance(main_habitat_raster, cell_size=30)
+    main_habitat_raster = arcpy.sa.Con(arcpy.Raster(str(ascs[0])) >= 0.5, 1)
+    distance_raster = arcpy.sa.EucDistance(main_habitat_raster, cell_size=5)
 
     query = arcutils.make_isin_query("비오톱", [16])
-    arcpy.management.SelectLayerByAttribute(biotope_layer, "NEW_SELECTION", query)
+    arcpy.management.SelectLayerByAttribute(biotope_shp, "NEW_SELECTION", query)
 
     with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
         result_table = arcpy.sa.ZonalStatisticsAsTable(
-            biotope_layer,
+            biotope_shp,
             "BT_ID",
             distance_raster,
             "memory/result_table",
             statistics_type="MINIMUM"
         )
 
-    arcpy.management.SelectLayerByAttribute(biotope_layer, "CLEAR_SELECTION")
-    arcpy.management.Delete(keystone_probability_raster)
-
+    arcpy.management.SelectLayerByAttribute(biotope_shp, "CLEAR_SELECTION")
     result_df = arcutils.layer_to_df(result_table)
+    arcpy.management.Delete(result_table)
+
     maximum = result_df["MIN"].max()
     result_df = result_df.assign(H6_RESULT=lambda x: 1 - (x["MIN"] / maximum))
     result_df = result_df.rename(columns={
@@ -216,7 +227,7 @@ def evaluate_availability_of_piece_of_land(biotope_layer, keystone_probability_a
     })
     result_df = result_df.drop(columns="ZONE_CODE")
 
-    biotope_df = arcutils.layer_to_df(biotope_layer)
+    biotope_df = arcutils.layer_to_df(biotope_shp)
     result_df = pd.merge(biotope_df["BT_ID"], result_df, on="BT_ID", how="left")
     result_df = result_df.fillna({"H6_RESULT": 0})
     return result_df

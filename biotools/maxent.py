@@ -2,14 +2,14 @@ import importlib.resources
 from os import PathLike
 from pathlib import Path
 import subprocess
+from typing import Union
 
 import pandas as pd
 
 
-def run_maxent(samplesfile: PathLike,
-               environmentallayers: PathLike,
-               outputdirectory: PathLike,
-               overrite: bool = False,
+def run_maxent(samplesfile: Union[str, PathLike],
+               environmentallayers: Union[str, PathLike],
+               outputdirectory: Union[str, PathLike],
                **kwargs):
     """
     Args:
