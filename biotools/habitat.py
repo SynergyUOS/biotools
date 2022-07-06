@@ -1,20 +1,21 @@
 from os import PathLike
 from pathlib import Path
-from typing import Union
+from typing import Sequence, Union
 
 import arcpy
 import arcpy.analysis
 import arcpy.management
 import arcpy.sa
+import numpy as np
 import pandas as pd
 
 from biotools import arcutils, pdplus, maxent
 
 
 def evaluate_habitat_size(
-    biotope_layer,
-    lower_bounds=(50, 10, 1, 0),
-    scores=(1, 0.5, 0.3, 0.2, 0)
+    biotope_shp: Union[str, PathLike],
+    lower_bounds: Sequence[float] = (50, 10, 1, 0),
+    scores: Sequence[float] = (1, 0.5, 0.3, 0.2)
 ) -> pd.DataFrame:
     """H1. 서식지 다양성 - 서식지 규모
 
@@ -23,16 +24,55 @@ def evaluate_habitat_size(
     * class 형태로 묶기
     * 패키지 설치 포함하여 작업하기, if 문 이용하여 설치 안되어 있으면 설치되는 것으로
     """
-    biotope_df = arcutils.layer_to_df(biotope_layer)
-    return biotope_df.assign(HaArea=lambda x: x["Area"] / 10000,
-                             Ix_BioScale=lambda x: x["HaArea"].apply(_range_evaluate, lower_bounds=lower_bounds, scores=scores))
+    query = arcutils.make_isin_query("비오톱", [9, 10, 12, 13, 14, 15])
+    arcpy.management.SelectLayerByAttribute(biotope_shp, "NEW_SELECTION", query)
+
+    with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
+        dissolved = arcpy.management.Dissolve(
+            biotope_shp,
+            "memory/dissolved",
+            dissolve_field="비오톱",
+            multi_part="SINGLE_PART"
+        )
+    arcpy.management.SelectLayerByAttribute(biotope_shp, "CLEAR_SELECTION")
+
+    arcpy.management.CalculateGeometryAttributes(
+        dissolved,
+        [["H1_HECTARES", "AREA_GEODESIC"]],
+        area_unit="HECTARES",
+    )
+
+    with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
+        result_map = arcpy.analysis.SpatialJoin(
+            biotope_shp,
+            dissolved,
+            "memory/result_map",
+        )
+    arcpy.management.Delete(dissolved)
+    result_df = arcutils.layer_to_df(result_map)
+    arcpy.management.Delete(result_map)
+
+    result_df = result_df[["BT_ID", "H1_HECTARE"]]
+    result_df = result_df.assign(
+        H1_RESULT=lambda x: x["H1_HECTARE"].apply(
+            _range_evaluate, lower_bounds=lower_bounds, scores=scores
+        )
+    )
+
+    biotope_df = arcutils.layer_to_df(biotope_shp)
+    result_df = biotope_df.merge(result_df, how="left", on="BT_ID")
+    print(result_df["H1_RESULT"].value_counts())
+    return result_df
 
 
 def _range_evaluate(value, lower_bounds, scores):
+    if np.isnan(value):
+        return 0
+
     for i, lower_bound in enumerate(lower_bounds):
         if value >= lower_bound:
             return scores[i]
-    return scores[-1]
+    return 0        # minus area unreachable
 
 
 def evaluate_structured_layer(biotope_shp):
@@ -186,9 +226,6 @@ def evaluate_availability_of_piece_of_land(
     result_directory: Union[str, PathLike]
 ):
     """H6 - 자투리땅 활용 가능성"""
-    # run maxent
-
-    # arcutils.fix_fid(biotope_shp)
     base_dir = Path(result_directory)
     process_dir = base_dir / "process"
     maxent_dir = process_dir / (Path(keystone_csv).stem + "_maxent")
