@@ -61,26 +61,7 @@ class HabitatSize:
         result_df = result_df.assign(
             H1_RESULT=lambda x: x["H1_HECTARE"].apply(self._range_evaluate)
         )
-
-        result_df.to_csv(self._result_csv, encoding="euc-kr", index=False)
-
-        joined = am.AddJoin(self._biotope_shp, "BT_ID", self._result_csv, "BT_ID")
-
-        if Path(self._result_shp).exists():
-            am.Delete(self._result_shp)
-        am.CopyFeatures(joined, self._result_shp)
-
-        good_names = arcutils.get_fields(self._biotope_shp) + result_df.columns.tolist()
-        fields = arcpy.ListFields(self._result_shp)
-        for field, good_name in zip(fields, good_names):
-            if field.type == "OID" or field.type == "Geometry":
-                continue
-            if good_name not in arcutils.get_fields(self._result_shp):
-                am.AddField(self._result_shp, good_name, field.type)
-                am.CalculateField(self._result_shp, good_name, f"!{field.name}!")
-            am.DeleteField(self._result_shp, field.name)
-
-        return self._result_shp
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
     def _range_evaluate(self, value):
         if np.isnan(value):
@@ -90,6 +71,109 @@ class HabitatSize:
             if value >= lower_bound:
                 return self._scores[i]
         return 0        # minus area unreachable
+
+
+class StructuredLayer:
+
+    def __init__(
+        self,
+        biotope_shp,
+        result_shp,
+        scores
+    ):
+        self._biotope_shp = str(biotope_shp)
+        self._result_shp = str(result_shp)
+        self._result_csv = str(Path(result_shp).with_suffix(".csv"))
+        self._scores = scores
+
+        Path(result_shp).parent.mkdir(parents=True, exist_ok=True)
+
+    def run(self):
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        is_green_s = ~biotope_df["비오톱"].isin(arcutils.get_medium_codes(range(1, 9)))
+
+        structure_df = self._create_dummy_structure()
+        green_df = structure_df[is_green_s]
+        green_df = self._score_structured_layer(green_df)
+        green_df = green_df.rename(columns={
+            "HERB": "H2_HERB",
+            "SHRUB": "H2_SHRUB",
+            "TREE": "H2_TREE",
+        })
+        result_df = biotope_df[["BT_ID"]].merge(green_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"H2_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+
+    def _create_dummy_structure(self):
+        import random
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        return biotope_df[["BT_ID"]].assign(
+            HERB=random.choices(["N", "Y"], weights=[1, 1], k=len(biotope_df)),
+            SHRUB=random.choices(["N", "Y"], weights=[3, 1], k=len(biotope_df)),
+            TREE=random.choices(["N", "Y"], weights=[4, 1], k=len(biotope_df))
+        )
+
+    def _score_structured_layer(self, df: pd.DataFrame):
+        result_df = df.copy()
+        p = (df["HERB"] == "Y")
+        q = (df["SHRUB"] == "Y")
+        r = (df["TREE"] == "Y")
+        score_s = p.astype(int) + q.astype(int) + r.astype(int)
+        score_s = score_s.apply(lambda x: self._scores[x - 1])
+        result_df = result_df.assign(H2_RESULT=score_s)
+        return result_df
+
+
+class PatchIsolation:
+
+    def __init__(
+        self,
+        biotope_shp,
+        result_shp
+    ):
+        pass
+
+    def run(self):
+        pass
+
+
+class LeastcostDistribution:
+
+    def __init__(
+        self,
+        biotope_shp,
+        result_shp
+    ):
+        pass
+
+    def run(self):
+        pass
+
+
+class PieceoflandOccurrence:
+
+    def __init__(
+        self,
+        biotope_shp,
+        result_shp
+    ):
+        pass
+
+    def run(self):
+        pass
+
+
+class PieceoflandAvailability:
+
+    def __init__(
+        self,
+        biotope_shp,
+        result_shp
+    ):
+        pass
+
+    def run(self):
+        pass
 
 
 def evaluate_structured_layer(biotope_shp):

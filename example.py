@@ -10,6 +10,9 @@ def main():
     h1 = bt.run_h1()
     print(arcutils.shp_to_df(h1))
 
+    h2 = bt.run_h2()
+    print(arcutils.shp_to_df(h2))
+
 
 if __name__ == "__main__":
     main()

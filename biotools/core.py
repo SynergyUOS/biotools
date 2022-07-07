@@ -76,7 +76,7 @@ class Biotools:
         Return:
             Path to result file(shp).
         """
-        result_shp = self._base_dir / "result_h1" / (self._biotope_wgs_shp.stem + "_h1.shp")
+        result_shp = self._create_result_shp("h1")
         sized_shp = self._process_dir / (self._biotope_wgs_shp.stem + "_sized.shp")
         h1 = habitat.HabitatSize(
             self._biotope_wgs_shp,
@@ -87,10 +87,25 @@ class Biotools:
         )
         return h1.run()
 
+    def _create_result_shp(self, tag):
+        return self._base_dir / f"result_{tag}" / (self._biotope_wgs_shp.stem + f"_{tag}.shp")
+
     def evaluate_structured_layer(
         self,
-    ):
-        pass
+        scores: Sequence[float] = (0.3, 0.6, 1)
+    ) -> str:
+        """Evaluate structured layer.
+
+        Return:
+            Path to result file(shp).
+        """
+        result_shp = self._create_result_shp("h2")
+        h2 = habitat.StructuredLayer(
+            self._biotope_wgs_shp,
+            result_shp,
+            scores
+        )
+        return h2.run()
 
     def evaluate_patch_isolation(
         self,
