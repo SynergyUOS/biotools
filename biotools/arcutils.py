@@ -37,7 +37,7 @@ def get_biotope_codes(large_codes):
 
 
 def get_fields(layer):
-    return [field.name for field in arcpy.ListFields(layer)]
+    return [field.name for field in arcpy.ListFields(str(layer))]
 
 
 def get_oid_field(layer):
