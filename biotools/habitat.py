@@ -8,6 +8,7 @@ import arcpy.management
 
 import arcpy.analysis as aa
 import arcpy.management as am
+import arcpy.sa as asa
 import arcpy.sa
 import numpy as np
 import pandas as pd
@@ -170,7 +171,6 @@ class PatchIsolation:
             "AREA": "H3_AREA",
             "PERCENTAGE": "H3_RESULT"
         })
-
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
         result_df = result_df.fillna({"H3_RESULT": 0})
@@ -206,42 +206,47 @@ class PieceoflandOccurrence:
         self._cellsize = cellsize
 
     def run(self):
-        pass
-        # commercialpoint_layer = arcpy.management.XYTableToPoint(
-        #     self._commercialpoint_csv,
-        #     "memory/commercialpoint_layer",
-        #     "경도",
-        #     "위도",
-        #     coordinate_system=arcutils.WGS1984_PRJ)
+        commercialpoint_layer = am.XYTableToPoint(
+            self._commercialpoint_csv,
+            "memory/commercialpoint_layer",
+            "경도",
+            "위도",
+            coordinate_system=arcutils.WGS1984_PRJ)
 
-        # selected = arcpy.management.SelectLayerByLocation(
-        #     commercialpoint_layer,
-        #     "INTERSECT",
-        #     self._biotope_shp,
-        #     "5 Kilometers"
-        # )
+        selected = am.SelectLayerByLocation(
+            commercialpoint_layer,
+            "INTERSECT",
+            self._biotope_shp,
+            "5 Kilometers"
+        )
 
-        # distance_raster = arcpy.sa.EucDistance(selected, cell_size=self._cellsize)
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+            distance_raster = asa.EucDistance(selected, cell_size=self._cellsize)
+        am.Delete(commercialpoint_layer)
 
-        # result_table = arcpy.sa.ZonalStatisticsAsTable(
-        #     self._biotope_shp,
-        #     "BT_ID",
-        #     distance_raster,
-        #     "memory/result_table",
-        #     statistics_type="MINIMUM",
-        # )
-        # result_df = arcutils.shp_to_df(result_table)
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+            result_table = asa.ZonalStatisticsAsTable(
+                self._biotope_shp,
+                "BT_ID",
+                distance_raster,
+                "memory/result_table",
+                statistics_type="MINIMUM",
+            )
+        result_df = arcutils.shp_to_df(result_table)
+        am.Delete(result_table)
 
-
-        # biotope_df = arcutils.shp_to_df(self._biotope_shp)
-        # max_distance = result_df["MIN"].max()
-        # result_df = result_df.assign(result=lambda x: x["MIN"] / max_distance)
-        # result_df = result_df.rename(columns={
-        #     "COUNT": "H5_COUNT",
-        #     "AREA": "H5_AREA",
-        #     "MIN": "H5_MIN",
-        #     "result": "H5_RESULT"
-        # })
+        max_distance = result_df["MIN"].max()
+        result_df = result_df.assign(H5_RESULT=lambda x: x["MIN"] / max_distance)
+        result_df = result_df.drop(columns="ZONE_CODE")
+        result_df = result_df.rename(columns={
+            "COUNT": "H5_COUNT",
+            "AREA": "H5_AREA",
+            "MIN": "H5_MIN",
+        })
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"H5_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
 
 class PieceoflandAvailability:

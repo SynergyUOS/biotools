@@ -35,7 +35,7 @@ Foodchain Info Table (먹이사슬 관계정보):
 |Biotope Map           |o|o|o|o|o|o|o|o|o|o|o|o|
 |Environmental Layers  | | | |o| |o| | | | | |o|
 |Keystone Species Table| | | |o| |o| | | | | | |
-|Commercial Point Table | | | | |o| | | | | | | |
+|Commercial Point Table| | | | |o| | | | | | | |
 |Surveypoint Map       | | | | | | |o|o|o|o|o|o|
 |Foodchain Info Table  | | | | | | |o|o|o|o|o| |
 

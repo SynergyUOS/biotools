@@ -15,7 +15,7 @@ class Biotools:
         result_directory: Union[str, PathLike],
         environmentallayer_directory: Union[str, PathLike] = None,
         keystone_species_csv: Union[str, PathLike] = None,
-        commercialarea_csv: Union[str, PathLike] = None,
+        commercialpoint_csv: Union[str, PathLike] = None,
         surveypoint_shp: Union[str, PathLike] = None,
         foodchain_info_csv: Union[str, PathLike] = None
     ):
@@ -29,28 +29,28 @@ class Biotools:
                 Used at H4, H6, F6.
             `keystonespecies_csv`
                 Used at H4, H6.
-            `commercialarea_csv`
+            `commercialpoint_csv`
                 Used at H5.
             `surveypoint_shp`
                 Used at F1, F2, F3, F4, F5, F6
             `foodchaininfo_csv`
                 Used at F1, F2, F3, F4, F5
         """
-        self._base_dir = Path(result_directory)
+        self._base_dir = Path(result_directory).absolute()
         self._process_dir = self._base_dir / "process"
         self._process_dir.mkdir(parents=True, exist_ok=True)
         self._biotope_wgs_shp = self._prepare_shp(biotope_shp, "BT_ID")
 
         if environmentallayer_directory is not None:
-            self._environmentallayer_dir = Path(environmentallayer_directory)
+            self._environmentallayer_dir = Path(environmentallayer_directory).absolute()
         if keystone_species_csv is not None:
-            self._keystonespecies_csv = keystone_species_csv
-        if commercialarea_csv is not None:
-            self._commercialarea_csv = commercialarea_csv
+            self._keystonespecies_csv = Path(keystone_species_csv).absolute()
+        if commercialpoint_csv is not None:
+            self._commercialpoint_csv = Path(commercialpoint_csv).absolute()
         if surveypoint_shp is not None:
             self._surveypoint_wgs_shp = self._prepare_shp(surveypoint_shp, "SP_ID")
         if foodchain_info_csv is not None:
-            self._foodchaininfo_csv = foodchain_info_csv
+            self._foodchain_info_csv = Path(foodchain_info_csv).absolute()
 
     def _prepare_shp(self, shp, newidfield):
         newshp = self._process_dir / (Path(shp).stem + "_WGS.shp")
@@ -110,7 +110,7 @@ class Biotools:
         return h2.run()
 
     def evaluate_patch_isolation(
-        self,
+        self
     ):
         """Evaluate patch isolation.
 
@@ -131,8 +131,21 @@ class Biotools:
 
     def evaluate_pieceofland_occurrence(
         self,
+        cellsize: float = 5
     ):
-        pass
+        """Evaluate occurrence probability of piece of land
+
+        Return:
+            Path to result file(shp).
+        """
+        result_shp = self._create_result_shp("h5")
+        h5 = habitat.PieceoflandOccurrence(
+            self._biotope_wgs_shp,
+            self._commercialpoint_csv,
+            result_shp,
+            cellsize
+        )
+        return h5.run()
 
     def evaluate_pieceofland_availability(
         self,
