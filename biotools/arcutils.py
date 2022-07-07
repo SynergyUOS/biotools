@@ -1,7 +1,6 @@
-import io
+import importlib.resources
 from os import PathLike
 from pathlib import Path
-import pkgutil
 from typing import Union
 
 import arcpy
@@ -10,8 +9,8 @@ import pandas as pd
 
 
 def _init_biotope_codes():
-    raw_data = pkgutil.get_data(__name__, "res/biotope_codes.csv")
-    df = pd.read_csv(io.StringIO(raw_data.decode()))
+    with importlib.resources.path("biotools.res", "biotope_codes.csv") as path:
+        df = pd.read_csv(path)
 
     result = {}
     for large_category_code, sub_df in df.groupby("LARGE_CATEGORY_CODE"):
@@ -22,13 +21,13 @@ def _init_biotope_codes():
 BIOTOPE_CODES = _init_biotope_codes()
 
 
-def _init_projection(path):
-    raw_data = pkgutil.get_data(__name__, path)
-    return arcpy.SpatialReference(text=raw_data.decode())
+def _init_projection(name):
+    with importlib.resources.path("biotools.res", name) as path:
+        return arcpy.SpatialReference(path)
 
 
-WGS1984_PRJ = _init_projection("res/GCS_WGS_1984.prj")
-ITRF2000_PRJ = _init_projection("res/ITRF_2000_UTM_K.prj")
+WGS1984_PRJ = _init_projection("GCS_WGS_1984.prj")
+ITRF2000_PRJ = _init_projection("ITRF_2000_UTM_K.prj")
 
 
 def get_biotope_codes(large_codes):
@@ -54,11 +53,13 @@ def shp_to_df(shp: Union[str, PathLike]):
     result_df = result_df.set_index(fields[0])
     return result_df
 
+
 def get_medium_codes(large_codes):
     result = []
     for large_code in large_codes:
         result += BIOTOPE_CODES[large_code]
     return result
+
 
 def make_isin_query(field, large_category_codes):
     medium_category_codes = []
@@ -66,8 +67,10 @@ def make_isin_query(field, large_category_codes):
         medium_category_codes += BIOTOPE_CODES[large_category_code]
     return " OR ".join([f"{field} = '{code}'" for code in medium_category_codes])
 
+
 def query_isin(field, targets):
     return " OR ".join([f"{field} = '{target}'" for target in targets])
+
 
 def get_cs(layer):
     """for debug"""

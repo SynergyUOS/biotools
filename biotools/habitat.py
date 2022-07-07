@@ -211,7 +211,8 @@ class PieceoflandOccurrence:
             "memory/commercialpoint_layer",
             "경도",
             "위도",
-            coordinate_system=arcutils.WGS1984_PRJ)
+            coordinate_system=arcutils.WGS1984_PRJ
+        )
 
         selected = am.SelectLayerByLocation(
             commercialpoint_layer,
