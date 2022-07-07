@@ -6,6 +6,7 @@ import arcpy
 import arcpy.analysis
 import arcpy.management
 
+import arcpy.analysis as aa
 import arcpy.management as am
 import arcpy.sa
 import numpy as np
@@ -16,18 +17,22 @@ from biotools import arcutils, pdplus, maxent
 
 class HabitatSize:
 
-    def __init__(self, biotope_shp, result_shp, sized_shp, lower_bounds, scores):
+    def __init__(
+        self,
+        biotope_shp,
+        result_shp,
+        sized_shp,
+        lower_bounds,
+        scores
+    ):
         """
         biotope_shp: must have BT_ID field. condisdered WGS 1984.
         """
         self._biotope_shp = str(biotope_shp)
-        self._sized_shp = str(sized_shp)
         self._result_shp = str(result_shp)
-        self._result_csv = str(Path(result_shp).with_suffix(".csv"))
+        self._sized_shp = str(sized_shp)
         self._lower_bounds = lower_bounds
         self._scores = scores
-        Path(result_shp).parent.mkdir(parents=True, exist_ok=True)
-        Path(sized_shp).parent.mkdir(parents=True, exist_ok=True)
 
     def run(self):
         if not Path(self._sized_shp).exists():
@@ -83,10 +88,7 @@ class StructuredLayer:
     ):
         self._biotope_shp = str(biotope_shp)
         self._result_shp = str(result_shp)
-        self._result_csv = str(Path(result_shp).with_suffix(".csv"))
         self._scores = scores
-
-        Path(result_shp).parent.mkdir(parents=True, exist_ok=True)
 
     def run(self):
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
@@ -131,10 +133,48 @@ class PatchIsolation:
         biotope_shp,
         result_shp
     ):
-        pass
+        self._biotope_shp = str(biotope_shp)
+        self._result_shp = str(result_shp)
 
     def run(self):
-        pass
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+            buffer_layer = aa.Buffer(
+                self._biotope_shp,
+                "memory/buffer_layer",
+                "125 Meters"
+            )
+
+        medium_codes = arcutils.get_medium_codes([9, 10, 12, 13, 14, 15])
+        query = arcutils.query_isin("비오톱", medium_codes)
+        selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+            dissolved = am.Dissolve(
+                selected,
+                "memory/dissolved",
+            )
+
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+            in_buffer_table = aa.TabulateIntersection(
+                buffer_layer,
+                "BT_ID",
+                dissolved,
+                "memory/in_buffer_table",
+                out_units="SQUARE_METERS"
+            )
+        result_df = arcutils.shp_to_df(in_buffer_table)
+        am.Delete(in_buffer_table)
+        am.Delete(buffer_layer)
+        am.Delete(dissolved)
+
+        result_df = result_df.rename(columns={
+            "AREA": "H3_AREA",
+            "PERCENTAGE": "H3_RESULT"
+        })
+
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"H3_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
 
 class LeastcostDistribution:
@@ -144,7 +184,8 @@ class LeastcostDistribution:
         biotope_shp,
         result_shp
     ):
-        pass
+        self._biotope_shp = str(biotope_shp)
+        self._result_shp = str(result_shp)
 
     def run(self):
         pass
@@ -155,12 +196,52 @@ class PieceoflandOccurrence:
     def __init__(
         self,
         biotope_shp,
-        result_shp
+        commercialpoint_csv,
+        result_shp,
+        cellsize
     ):
-        pass
+        self._biotope_shp = str(biotope_shp)
+        self._result_shp = str(result_shp)
+        self._commercialpoint_csv = str(commercialpoint_csv)
+        self._cellsize = cellsize
 
     def run(self):
         pass
+        # commercialpoint_layer = arcpy.management.XYTableToPoint(
+        #     self._commercialpoint_csv,
+        #     "memory/commercialpoint_layer",
+        #     "경도",
+        #     "위도",
+        #     coordinate_system=arcutils.WGS1984_PRJ)
+
+        # selected = arcpy.management.SelectLayerByLocation(
+        #     commercialpoint_layer,
+        #     "INTERSECT",
+        #     self._biotope_shp,
+        #     "5 Kilometers"
+        # )
+
+        # distance_raster = arcpy.sa.EucDistance(selected, cell_size=self._cellsize)
+
+        # result_table = arcpy.sa.ZonalStatisticsAsTable(
+        #     self._biotope_shp,
+        #     "BT_ID",
+        #     distance_raster,
+        #     "memory/result_table",
+        #     statistics_type="MINIMUM",
+        # )
+        # result_df = arcutils.shp_to_df(result_table)
+
+
+        # biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        # max_distance = result_df["MIN"].max()
+        # result_df = result_df.assign(result=lambda x: x["MIN"] / max_distance)
+        # result_df = result_df.rename(columns={
+        #     "COUNT": "H5_COUNT",
+        #     "AREA": "H5_AREA",
+        #     "MIN": "H5_MIN",
+        #     "result": "H5_RESULT"
+        # })
 
 
 class PieceoflandAvailability:
@@ -170,83 +251,11 @@ class PieceoflandAvailability:
         biotope_shp,
         result_shp
     ):
-        pass
+        self._biotope_shp = str(biotope_shp)
+        self._result_shp = str(result_shp)
 
     def run(self):
         pass
-
-
-def evaluate_structured_layer(biotope_shp):
-    """H2. 서식지 다양성 - 층위구조"""
-    arcutils.fix_fid(biotope_shp)
-
-    biotope_df = arcutils.shp_to_df(biotope_shp)
-
-    # temporary data creation
-    import random
-    result_df = biotope_df[["BT_ID"]].assign(
-        HERB=random.choices(["N", "Y"], weights=[1, 1], k=len(biotope_df)),
-        SHRUB=random.choices(["N", "Y"], weights=[3, 1], k=len(biotope_df)),
-        TREE=random.choices(["N", "Y"], weights=[4, 1], k=len(biotope_df))
-    )
-
-    is_green_s = ~biotope_df["비오톱"].isin(arcutils.get_biotope_codes(range(1, 9)))
-    green_df = result_df[is_green_s]
-    green_df = _score_structured_layer(green_df)
-    green_df = green_df.rename(columns={
-        "HERB": "H2_HERB",
-        "SHRUB": "H2_SHRUB",
-        "TREE": "H2_TREE",
-        "SCORE": "H2_RESULT"
-    })
-    result_df = biotope_df.merge(green_df, how="left", on="BT_ID")
-    result_df = result_df.fillna({"H2_RESULT": 0})
-    return result_df
-
-
-def _score_structured_layer(df: pd.DataFrame, scores=(0.3, 0.6, 1)):
-    result_df = df.copy()
-    p = (df["HERB"] == "Y")
-    q = (df["SHRUB"] == "Y")
-    r = (df["TREE"] == "Y")
-    score_s = p.astype(int) + q.astype(int) + r.astype(int)
-    score_s = score_s.apply(lambda x: scores[x - 1])
-    result_df = result_df.assign(SCORE=score_s)
-    return result_df
-
-
-def get_default_habitable_codes():
-    result = []
-    for category, upper_bound in zip("HIJKLM", (12, 1, 13, 2, 5, 4)):
-        result += [category + str(i) for i in range(1, upper_bound + 1)]
-    return tuple(result)
-
-
-def evaluate_patch_isolation(biotope_layer, habitable_codes=get_default_habitable_codes()):
-    """H3 - 패치고립도
-    """
-    query = " OR ".join([f"비오톱 = '{code}'" for code in habitable_codes])
-    arcpy.management.SelectLayerByAttribute(biotope_layer, "NEW_SELECTION", query)
-
-    buffer_layer = arcpy.analysis.Buffer(biotope_layer, "memory/buffer_layer", "125 Meters", "FULL", "ROUND", "NONE")
-    in_buffer_table = arcpy.analysis.TabulateIntersection(buffer_layer, "ORIG_FID", biotope_layer,
-                                                          "memory/in_buffer_table", "FID", out_units="SQUARE_METERS")
-
-    arcpy.management.SelectLayerByAttribute(biotope_layer, "CLEAR_SELECTION")
-
-    biotope_df = arcutils.shp_to_df(biotope_layer)
-    in_buffer_df = arcutils.shp_to_df(in_buffer_table)
-
-    in_buffer_proportion_s = in_buffer_df.groupby("ORIG_FID").sum()["PERCENTAGE"]
-
-    result_df = pd.merge(biotope_df, in_buffer_proportion_s, left_index=True, right_index=True, how="left")
-    result_df = result_df.rename(columns={"PERCENTAGE": "PatchIsolation"})
-    result_df = result_df.fillna({"PatchIsolation": 0})
-
-    arcpy.management.Delete("memory/buffer_layer")
-    arcpy.management.Delete("memory/in_buffer_table")
-
-    return result_df
 
 
 def evaluate_least_cost_distribution(

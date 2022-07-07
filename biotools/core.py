@@ -88,7 +88,9 @@ class Biotools:
         return h1.run()
 
     def _create_result_shp(self, tag):
-        return self._base_dir / f"result_{tag}" / (self._biotope_wgs_shp.stem + f"_{tag}.shp")
+        result = self._base_dir / f"result_{tag}" / (self._biotope_wgs_shp.stem + f"_{tag}.shp")
+        result.parent.mkdir(parents=True, exist_ok=True)
+        return result
 
     def evaluate_structured_layer(
         self,
@@ -110,7 +112,17 @@ class Biotools:
     def evaluate_patch_isolation(
         self,
     ):
-        pass
+        """Evaluate patch isolation.
+
+        Return:
+            Path to result file(shp).
+        """
+        result_shp = self._create_result_shp("h3")
+        h3 = habitat.PatchIsolation(
+            self._biotope_wgs_shp,
+            result_shp,
+        )
+        return h3.run()
 
     def evaluate_leastcost_distribution(
         self,

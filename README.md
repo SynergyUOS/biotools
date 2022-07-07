@@ -11,7 +11,7 @@ Biotope Map (도시생태현황도):
 * .shp
 * PCS_ITRF2000_TM
 
-Keystone Species Survey Point Table (핵심종 출현정보):
+Keystone Species Table (핵심종 출현정보):
 * .csv
 * ITRF_2000_UTM_K
 
@@ -19,16 +19,25 @@ Environmental Layers (환경변수지도):
 * .asc
 * ITRF_2000_UTM_K
 
-Commercial Area Point Table (유동인구 or 발달상권 데이터):
+Commercial Point Table (유동인구 or 발달상권 데이터):
 * .csv
 * GCS_WGS_1984
 
-Species Survey Point Map (생물종 출현정보):
+Surveypoint Map (생물종 출현정보):
 * .csv
 * PCS_ITRF2000_TM
 
-Species' Foodchain Information Table (먹이사슬 관계정보):
+Foodchain Info Table (먹이사슬 관계정보):
 * .csv
+
+||H1|H2|H3|H4|H5|H6|F1|F2|F3|F4|F5|F6|
+|-|-|-|-|-|-|-|-|-|-|-|-|-|
+|Biotope Map           |o|o|o|o|o|o|o|o|o|o|o|o|
+|Environmental Layers  | | | |o| |o| | | | | |o|
+|Keystone Species Table| | | |o| |o| | | | | | |
+|Commercial Point Table | | | | |o| | | | | | | |
+|Surveypoint Map       | | | | | | |o|o|o|o|o|o|
+|Foodchain Info Table  | | | | | | |o|o|o|o|o| |
 
 ## Usage
 
