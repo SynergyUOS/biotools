@@ -2,6 +2,7 @@ import io
 from os import PathLike
 import pathlib
 import pkgutil
+from typing import Union
 
 import arcpy
 import pandas as pd
@@ -44,14 +45,19 @@ def get_oid_field(layer):
     return arcpy.ListFields(layer, field_type="OID")[0].name
 
 
-def layer_to_df(layer: PathLike):
-    layer = str(layer)
-    fields = get_fields(layer)
-    table = [row for row in arcpy.da.SearchCursor(layer, fields)]
+def shp_to_df(shp: Union[str, PathLike]):
+    shp = str(shp)
+    fields = get_fields(shp)
+    table = [row for row in arcpy.da.SearchCursor(shp, fields)]
     result_df = pd.DataFrame(table, columns=fields)
     result_df = result_df.set_index(fields[0])
     return result_df
 
+def get_medium_codes(large_codes):
+    result = []
+    for large_code in large_codes:
+        result += BIOTOPE_CODES[large_code]
+    return result
 
 def make_isin_query(field, large_category_codes):
     medium_category_codes = []
@@ -59,6 +65,8 @@ def make_isin_query(field, large_category_codes):
         medium_category_codes += BIOTOPE_CODES[large_category_code]
     return " OR ".join([f"{field} = '{code}'" for code in medium_category_codes])
 
+def query_isin(field, targets):
+    return " OR ".join([f"{field} = '{target}'" for target in targets])
 
 def get_cs(layer):
     """for debug"""

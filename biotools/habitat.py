@@ -5,6 +5,8 @@ from typing import Sequence, Union
 import arcpy
 import arcpy.analysis
 import arcpy.management
+
+import arcpy.management as am
 import arcpy.sa
 import numpy as np
 import pandas as pd
@@ -12,74 +14,89 @@ import pandas as pd
 from biotools import arcutils, pdplus, maxent
 
 
-def evaluate_habitat_size(
-    biotope_shp: Union[str, PathLike],
-    lower_bounds: Sequence[float] = (50, 10, 1, 0),
-    scores: Sequence[float] = (1, 0.5, 0.3, 0.2)
-) -> pd.DataFrame:
-    """H1. 서식지 다양성 - 서식지 규모
+class HabitatSize:
 
-    ### To Do
-    * arcpy로 비오톱 합치기
-    * class 형태로 묶기
-    * 패키지 설치 포함하여 작업하기, if 문 이용하여 설치 안되어 있으면 설치되는 것으로
-    """
-    query = arcutils.make_isin_query("비오톱", [9, 10, 12, 13, 14, 15])
-    arcpy.management.SelectLayerByAttribute(biotope_shp, "NEW_SELECTION", query)
+    def __init__(self, biotope_shp, result_shp, sized_shp, lower_bounds, scores):
+        """
+        biotope_shp: must have BT_ID field. condisdered WGS 1984.
+        """
+        self._biotope_shp = str(biotope_shp)
+        self._sized_shp = str(sized_shp)
+        self._result_shp = str(result_shp)
+        self._result_csv = str(Path(result_shp).with_suffix(".csv"))
+        self._lower_bounds = lower_bounds
+        self._scores = scores
+        Path(result_shp).parent.mkdir(parents=True, exist_ok=True)
+        Path(sized_shp).parent.mkdir(parents=True, exist_ok=True)
 
-    with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
-        dissolved = arcpy.management.Dissolve(
-            biotope_shp,
-            "memory/dissolved",
-            dissolve_field="비오톱",
-            multi_part="SINGLE_PART"
+    def run(self):
+        if not Path(self._sized_shp).exists():
+            medium_codes = arcutils.get_medium_codes([9, 10, 12, 13, 14, 15])
+            query = arcutils.query_isin("비오톱", medium_codes)
+            selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)
+            with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
+                dissolved = am.Dissolve(
+                    selected,
+                    "memory/dissolved",
+                    dissolve_field="비오톱",
+                    multi_part="SINGLE_PART"
+                )
+
+            am.CalculateGeometryAttributes(
+                dissolved,
+                [["H1_HECTARES", "AREA_GEODESIC"]],
+                area_unit="HECTARES",
+            )
+
+            with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
+                arcpy.analysis.SpatialJoin(
+                    self._biotope_shp,
+                    dissolved,
+                    self._sized_shp,
+                )
+            am.Delete(dissolved)
+
+        result_df = arcutils.shp_to_df(self._sized_shp)
+        result_df = result_df[["BT_ID", "H1_HECTARE"]]
+        result_df = result_df.assign(
+            H1_RESULT=lambda x: x["H1_HECTARE"].apply(self._range_evaluate)
         )
-    arcpy.management.SelectLayerByAttribute(biotope_shp, "CLEAR_SELECTION")
 
-    arcpy.management.CalculateGeometryAttributes(
-        dissolved,
-        [["H1_HECTARES", "AREA_GEODESIC"]],
-        area_unit="HECTARES",
-    )
+        result_df.to_csv(self._result_csv, encoding="euc-kr", index=False)
 
-    with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
-        result_map = arcpy.analysis.SpatialJoin(
-            biotope_shp,
-            dissolved,
-            "memory/result_map",
-        )
-    arcpy.management.Delete(dissolved)
-    result_df = arcutils.layer_to_df(result_map)
-    arcpy.management.Delete(result_map)
+        joined = am.AddJoin(self._biotope_shp, "BT_ID", self._result_csv, "BT_ID")
 
-    result_df = result_df[["BT_ID", "H1_HECTARE"]]
-    result_df = result_df.assign(
-        H1_RESULT=lambda x: x["H1_HECTARE"].apply(
-            _range_evaluate, lower_bounds=lower_bounds, scores=scores
-        )
-    )
+        if Path(self._result_shp).exists():
+            am.Delete(self._result_shp)
+        am.CopyFeatures(joined, self._result_shp)
 
-    biotope_df = arcutils.layer_to_df(biotope_shp)
-    result_df = biotope_df.merge(result_df, how="left", on="BT_ID")
-    print(result_df["H1_RESULT"].value_counts())
-    return result_df
+        good_names = arcutils.get_fields(self._biotope_shp) + result_df.columns.tolist()
+        fields = arcpy.ListFields(self._result_shp)
+        for field, good_name in zip(fields, good_names):
+            if field.type == "OID" or field.type == "Geometry":
+                continue
+            if good_name not in arcutils.get_fields(self._result_shp):
+                am.AddField(self._result_shp, good_name, field.type)
+                am.CalculateField(self._result_shp, good_name, f"!{field.name}!")
+            am.DeleteField(self._result_shp, field.name)
 
+        return self._result_shp
 
-def _range_evaluate(value, lower_bounds, scores):
-    if np.isnan(value):
-        return 0
+    def _range_evaluate(self, value):
+        if np.isnan(value):
+            return 0
 
-    for i, lower_bound in enumerate(lower_bounds):
-        if value >= lower_bound:
-            return scores[i]
-    return 0        # minus area unreachable
+        for i, lower_bound in enumerate(self._lower_bounds):
+            if value >= lower_bound:
+                return self._scores[i]
+        return 0        # minus area unreachable
 
 
 def evaluate_structured_layer(biotope_shp):
     """H2. 서식지 다양성 - 층위구조"""
     arcutils.fix_fid(biotope_shp)
 
-    biotope_df = arcutils.layer_to_df(biotope_shp)
+    biotope_df = arcutils.shp_to_df(biotope_shp)
 
     # temporary data creation
     import random
@@ -133,8 +150,8 @@ def evaluate_patch_isolation(biotope_layer, habitable_codes=get_default_habitabl
 
     arcpy.management.SelectLayerByAttribute(biotope_layer, "CLEAR_SELECTION")
 
-    biotope_df = arcutils.layer_to_df(biotope_layer)
-    in_buffer_df = arcutils.layer_to_df(in_buffer_table)
+    biotope_df = arcutils.shp_to_df(biotope_layer)
+    in_buffer_df = arcutils.shp_to_df(in_buffer_table)
 
     in_buffer_proportion_s = in_buffer_df.groupby("ORIG_FID").sum()["PERCENTAGE"]
 
@@ -174,7 +191,7 @@ def evaluate_least_cost_distribution(
             "memory/result_table",
             statistics_type="MEAN"
         )
-    result_df = arcutils.layer_to_df(result_table)
+    result_df = arcutils.shp_to_df(result_table)
     arcpy.management.Delete(result_table)
 
     result_df = result_df.assign(H4_RESULT=lambda x: 1 - x["MEAN"])
@@ -183,7 +200,7 @@ def evaluate_least_cost_distribution(
         "COUNT": "H4_COUNT",
         "AREA": "H4_AREA",
     })
-    biotope_df = arcutils.layer_to_df(biotope_shp)
+    biotope_df = arcutils.shp_to_df(biotope_shp)
     result_df = biotope_df.merge(result_df, how="left", on="BT_ID")
     result_df = result_df.fillna({"H4_RESULT": 0})
     return result_df
@@ -205,8 +222,8 @@ def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, 
 
     arcpy.management.SelectLayerByAttribute(biotope_layer, "CLEAR_SELECTION")
 
-    biotope_df = arcutils.layer_to_df(biotope_layer)
-    result_df = arcutils.layer_to_df(result_table)
+    biotope_df = arcutils.shp_to_df(biotope_layer)
+    result_df = arcutils.shp_to_df(result_table)
 
     max_distance = result_df["MIN"].max()
     result_df = result_df.assign(result=lambda x: x["MIN"] / max_distance)
@@ -252,7 +269,7 @@ def evaluate_availability_of_piece_of_land(
         )
 
     arcpy.management.SelectLayerByAttribute(biotope_shp, "CLEAR_SELECTION")
-    result_df = arcutils.layer_to_df(result_table)
+    result_df = arcutils.shp_to_df(result_table)
     arcpy.management.Delete(result_table)
 
     maximum = result_df["MIN"].max()
@@ -264,7 +281,7 @@ def evaluate_availability_of_piece_of_land(
     })
     result_df = result_df.drop(columns="ZONE_CODE")
 
-    biotope_df = arcutils.layer_to_df(biotope_shp)
+    biotope_df = arcutils.shp_to_df(biotope_shp)
     result_df = pd.merge(biotope_df["BT_ID"], result_df, on="BT_ID", how="left")
     result_df = result_df.fillna({"H6_RESULT": 0})
     return result_df

@@ -25,7 +25,7 @@ def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_inf
 
     joined_survey_point_layer = arcpy.analysis.SpatialJoin(survey_point_layer, biotope_layer, "memory/joined_survey_point_layer")
 
-    survey_point_df = arcutils.layer_to_df(joined_survey_point_layer)
+    survey_point_df = arcutils.shp_to_df(joined_survey_point_layer)
     survey_point_df = pd.merge(survey_point_df, species_info_df, how="inner", left_on="국명", right_on="S_Name") # how="left"?
 
     arcpy.management.Delete("memory/joined_survey_point_layer")
@@ -40,7 +40,7 @@ def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species
     이 코드에서는 임위로 먹이종(곤충, 육상곤충, 포유류)을 1로, 아닌 종을 0으로 FR(Food Resources) 필드에 입력하였다.
     개체수 필드를 미리 숫자형 데이터로 변경시키고, 출현 정보는 있는데 NoData가 되어 있는 경우가 있으니, NoData를 미리 1로 채울 필요가 있음.
     """
-    biotope_df = arcutils.layer_to_df(biotope_layer)
+    biotope_df = arcutils.shp_to_df(biotope_layer)
     survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
     table = []
@@ -80,7 +80,7 @@ def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df:
 
     [Shannon Index](https://en.wikipedia.org/wiki/Diversity_index#Shannon_index)
     """
-    biotope_df = arcutils.layer_to_df(biotope_layer)
+    biotope_df = arcutils.shp_to_df(biotope_layer)
     survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
     table = []
@@ -119,7 +119,7 @@ def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_laye
             1: 0.3
         }
 
-    biotope_df = arcutils.layer_to_df(biotope_layer)
+    biotope_df = arcutils.shp_to_df(biotope_layer)
     survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
     table = []
@@ -141,7 +141,7 @@ def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_laye
 
 def evaluate_connection_strength(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
     """F4 - 연결강도"""
-    biotope_df = arcutils.layer_to_df(biotope_layer)
+    biotope_df = arcutils.shp_to_df(biotope_layer)
     survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
     table = []
@@ -160,7 +160,7 @@ def evaluate_connection_strength(biotope_layer, survey_point_layer, species_info
 
 def evaluate_similar_functional_species(biotope_layer, survey_point_layer, species_info_df):
     """F5 - 유사기능종"""
-    biotope_df = arcutils.layer_to_df(biotope_layer)
+    biotope_df = arcutils.shp_to_df(biotope_layer)
     survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
 
     table = []
@@ -213,7 +213,7 @@ def evaluate_inhabitation_of_food_resources(
         )
 
 
-    surveypoint_itrf_df = arcutils.layer_to_df(surveypoint_itrf_shp)
+    surveypoint_itrf_df = arcutils.shp_to_df(surveypoint_itrf_shp)
     sample_df = surveypoint_itrf_df[["국명", "Shape"]]
     sample_df = sample_df.assign(
         LONGITUDE=lambda x: x["Shape"].apply(lambda x: x[0]),
@@ -250,7 +250,7 @@ def evaluate_inhabitation_of_food_resources(
             "memory/result_table",
             statistics_type="MEAN"
         )
-    result_df = arcutils.layer_to_df(result_table)
+    result_df = arcutils.shp_to_df(result_table)
     arcpy.management.Delete(result_table)
 
     result_df = result_df.rename(columns={
@@ -260,7 +260,7 @@ def evaluate_inhabitation_of_food_resources(
     })
     result_df = result_df.drop(columns="ZONE_CODE")
 
-    biotope_df = arcutils.layer_to_df(biotope_shp)
+    biotope_df = arcutils.shp_to_df(biotope_shp)
     result_df = biotope_df.merge(result_df, how="left", on="BT_ID")
     result_df = result_df.fillna({"F6_RESULT": 0})
     return result_df
