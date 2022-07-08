@@ -1,6 +1,4 @@
 import math
-from os import PathLike
-from pathlib import Path
 
 import arcpy
 import arcpy.analysis as aa
@@ -254,101 +252,69 @@ class FoodResourceInhabitation:
     def __init__(
         self,
         biotope_shp,
+        environmentallayer_dir,
         surveypoint_shp,
         foodchain_info_csv,
+        sample_csv,
+        maxent_dir,
         result_shp,
     ):
         self._biotope_shp = str(biotope_shp)
+        self._environmentallayer_dir = str(environmentallayer_dir)
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchain_info_csv = str(foodchain_info_csv)
+        self._foodchain_info_df = pd.read_csv(foodchain_info_csv, encoding="euc-kr")
+        self._sample_csv = str(sample_csv)
+        self._maxent_dir = str(maxent_dir)
         self._result_shp = str(result_shp)
+        self._surverpoint = _Surveypoint(
+            self._surveypoint_shp,
+            None,
+            self._foodchain_info_df
+        )
 
     def run(self):
-        pass
-        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+        self._surverpoint.merge()
+        surveypoint_itrf_df = self._surverpoint.df
+        self._export_samples(surveypoint_itrf_df, self._sample_csv)
 
-
-def evaluate_inhabitation_of_food_resources(
-    biotope_shp: PathLike,
-    surveypoint_shp: PathLike,
-    environmentallayer_directory: PathLike,
-    result_directory: PathLike
-):
-    """F6 - 먹이자원 서식확률"""
-    base_dir = Path(result_directory)
-    process_dir = base_dir / "process"
-    result_dir = base_dir / "f6_result"
-
-    process_dir.mkdir(parents=True, exist_ok=True)
-    result_dir.mkdir(parents=True, exist_ok=True)
-
-    new_name = augment_name(Path(surveypoint_shp).name, "_ITRF")
-    surveypoint_itrf_shp = process_dir / new_name
-
-    if not surveypoint_itrf_shp.exists():
-        am.Project(
-            surveypoint_shp,
-            str(process_dir / new_name),
-            arcutils.ITRF2000_PRJ
+        ascs = maxent.run_maxent(
+            self._sample_csv,
+            self._environmentallayer_dir,
+            self._maxent_dir,
         )
 
+        mean_raster = asa.CellStatistics([str(asc) for asc in ascs], "MEAN")
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+            result_table = asa.ZonalStatisticsAsTable(
+                self._biotope_shp,
+                "BT_ID",
+                mean_raster,
+                "memory/result_table",
+                statistics_type="MEAN"
+            )
+        result_df = arcutils.shp_to_df(result_table)
+        am.Delete(result_table)
 
-    surveypoint_itrf_df = arcutils.shp_to_df(surveypoint_itrf_shp)
-    sample_df = surveypoint_itrf_df[["국명", "Shape"]]
-    sample_df = sample_df.assign(
-        LONGITUDE=lambda x: x["Shape"].apply(lambda x: x[0]),
-        LATITUDE=lambda x: x["Shape"].apply(lambda x: x[1]),
-    )
-    sample_df = sample_df.drop(columns="Shape")
+        result_df = result_df.drop(columns="ZONE_CODE")
+        result_df = result_df.rename(columns={
+            "COUNT": "F6_COUNT",
+            "AREA": "F6_AREA",
+            "MEAN": "F6_RESULT",
+        })
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"F6_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
-    sample_name = augment_name(surveypoint_itrf_shp, "_sample").with_suffix(".csv")
-    sample_csv = process_dir / sample_name
-    sample_df.to_csv(sample_csv, index=False, encoding="euc-kr")
-
-
-    ascs = maxent.run_maxent(
-        sample_csv,
-        environmentallayer_directory,
-        process_dir / (sample_csv.stem + "_maxent"),
-    )
-
-    mean_name = augment_name(sample_name, "_maxent_mean").with_suffix(".tif")
-    mean_tif = process_dir / mean_name
-
-    if not mean_tif.exists():
-        mean_raster = asa.CellStatistics(
-            [str(asc) for asc in ascs],
-            "MEAN"
+    def _export_samples(self, df, path):
+        df = df[df["Owls_foods"] == "Prey_S"]
+        df = df[["국명", "Shape"]]
+        df = df.assign(
+            LONGITUDE=lambda x: x["Shape"].apply(lambda x: x[0]),
+            LATITUDE=lambda x: x["Shape"].apply(lambda x: x[1]),
         )
-        mean_raster.save(str(mean_tif))
-
-    with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
-        result_table = asa.ZonalStatisticsAsTable(
-            biotope_shp,
-            "BT_ID",
-            str(mean_tif),
-            "memory/result_table",
-            statistics_type="MEAN"
-        )
-    result_df = arcutils.shp_to_df(result_table)
-    am.Delete(result_table)
-
-    result_df = result_df.rename(columns={
-        "COUNT": "F6_COUNT",
-        "AREA": "F6_AREA",
-        "MEAN": "F6_RESULT",
-    })
-    result_df = result_df.drop(columns="ZONE_CODE")
-
-    biotope_df = arcutils.shp_to_df(biotope_shp)
-    result_df = biotope_df.merge(result_df, how="left", on="BT_ID")
-    result_df = result_df.fillna({"F6_RESULT": 0})
-    return result_df
-
-
-def augment_name(path: PathLike, word: str) -> Path:
-    path = Path(path)
-    return path.with_stem(path.stem + word)
+        df = df.drop(columns="Shape")
+        df.to_csv(path, index=False, encoding="euc-kr")
 
 
 class _Surveypoint:
@@ -368,6 +334,14 @@ class _Surveypoint:
         self._surverpoint_df = arcutils.shp_to_df(joined)
         am.Delete(joined)
 
+        self.merge(skip_noname)
+
+        self._surverpoint_df["개체수"] = pd.to_numeric(
+            self._surverpoint_df["개체수"],
+            errors="coerce"
+        ).fillna(1)
+
+    def merge(self, skip_noname=True):
         self._surverpoint_df = pd.merge(
             self._surverpoint_df,
             self._foodchain_info_df,
@@ -392,8 +366,3 @@ class _Surveypoint:
                 },
                 lambda x: x["국명"] == " "
             )
-
-        self._surverpoint_df["개체수"] = pd.to_numeric(
-            self._surverpoint_df["개체수"],
-            errors="coerce"
-        ).fillna(1)

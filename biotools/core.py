@@ -294,7 +294,28 @@ class Biotools:
     def evaluate_food_resource_inhabitation(
         self,
     ):
-        pass
+        newstem = self._surveypoint_wgs_shp.stem.replace("WGS", "ITRF")
+        surveypoint_itrf_shp = self._surveypoint_wgs_shp.with_stem(newstem)
+        if not surveypoint_itrf_shp.exists():
+            am.Project(
+                str(self._surveypoint_wgs_shp),
+                str(surveypoint_itrf_shp),
+                arcutils.ITRF2000_PRJ
+            )
+
+        maxent_dir = self._create_maxent_dir("prey")
+        result_shp = self._create_result_shp("f6")
+        sample_csv = self._process_dir / "prey_sample.csv"
+        f6 = foodchain.FoodResourceInhabitation(
+            self._biotope_wgs_shp,
+            self._environmentallayer_dir,
+            surveypoint_itrf_shp,
+            self._foodchain_info_csv,
+            sample_csv,
+            maxent_dir,
+            result_shp,
+        )
+        return f6.run()
 
     run_h1 = evaluate_habitat_size
     run_h2 = evaluate_structured_layer

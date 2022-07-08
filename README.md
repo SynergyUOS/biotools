@@ -79,9 +79,9 @@ Foodchain Info Table: .csv
     - [ ] Documetation
   - [ ] F5. Similar Functional Species
     - [x] Implementation
-    - [ ] Encapsulation
+    - [x] Encapsulation
     - [ ] Documetation
   - [ ] F6. Inhabitation of Food Resources
     - [x] Implementation
-    - [ ] Encapsulation
+    - [x] Encapsulation
     - [ ] Documetation

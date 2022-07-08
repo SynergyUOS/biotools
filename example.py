@@ -46,6 +46,18 @@ def main():
     print(arcutils.shp_to_df(f3))
     f4 = bt.run_f4()
     print(arcutils.shp_to_df(f4))
+    f5 = bt.run_f5()
+    print(arcutils.shp_to_df(f5))
+
+    bt = Biotools(
+        "path/to/BiotopeMap.shp",
+        "path/to/result/",
+        environmentallayer_directory="path/to/envlayer/",
+        surveypoint_shp="path/to/Surveypoint.shp",
+        foodchain_info_csv="path/to/foodchain_info.csv"
+    )
+    f6 = bt.run_f6()
+    print(arcutils.shp_to_df(f6))
 
 
 if __name__ == "__main__":
