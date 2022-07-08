@@ -204,15 +204,49 @@ class SimilarFunctionalSpecies:
         surveypoint_shp,
         foodchain_info_csv,
         result_shp,
+        skip_noname=True,
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchain_info_csv = str(foodchain_info_csv)
+        self._foodchain_info_df = pd.read_csv(foodchain_info_csv, encoding="euc-kr")
         self._result_shp = str(result_shp)
+        self._skip_noname = skip_noname
+        self._surverpoint = _Surveypoint(
+            self._surveypoint_shp,
+            self._biotope_shp,
+            self._foodchain_info_df
+        )
 
     def run(self):
-        pass
-        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+        self._surverpoint.enrich(self._skip_noname)
+        surveypoint_df = self._surverpoint.df
+
+        table = []
+        for bt_id, sub_df in surveypoint_df.groupby("BT_ID"):
+            if bt_id is None:
+                continue
+            count_s = sub_df["Alternative_S"].value_counts()
+            threatened_count = count_s.get("Threatened_S", 0)
+            alt_alien_count = count_s.get("Alt_Alien_S", 0)
+            alt_count = count_s.get("Alt_S", 0)
+            normal_count = count_s.get("Normal_S", 0)
+            table.append([
+                bt_id,
+                threatened_count,
+                alt_alien_count,
+                alt_count,
+                normal_count,
+                int(alt_count > 0),
+            ])
+
+        result_df = pd.DataFrame(
+            table,
+            columns=["BT_ID", "F5_THRT_N", "F5_ALIEN_N", "F5_ALT_N", "F5_NORM_N", "F5_RESULT"]
+        )
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"F5_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
 
 class FoodResourceInhabitation:
@@ -232,57 +266,6 @@ class FoodResourceInhabitation:
     def run(self):
         pass
         # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
-
-
-def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    BT_ID field will be added to `biotope_layer` permanently.
-    SP_ID field will be added to `survey_point_layer` permanently.
-    """
-    if "SP_ID" not in arcutils.get_fields(survey_point_layer):
-        am.CalculateField(survey_point_layer, "SP_ID", f"'SP_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
-
-    if "BT_ID" not in arcutils.get_fields(biotope_layer):
-        am.CalculateField(biotope_layer, "BT_ID", f"'BT_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
-
-    joined_survey_point_layer = aa.SpatialJoin(survey_point_layer, biotope_layer, "memory/joined_survey_point_layer")
-
-    survey_point_df = arcutils.shp_to_df(joined_survey_point_layer)
-    survey_point_df = pd.merge(survey_point_df, species_info_df, how="inner", left_on="국명", right_on="S_Name") # how="left"?
-
-    am.Delete("memory/joined_survey_point_layer")
-
-    return survey_point_df
-
-
-def evaluate_similar_functional_species(biotope_layer, survey_point_layer, species_info_df):
-    """F5 - 유사기능종"""
-    biotope_df = arcutils.shp_to_df(biotope_layer)
-    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
-
-    table = []
-    for bt_id in survey_point_df["BT_ID"].unique():
-        if bt_id is None:
-            continue
-
-        count_s = survey_point_df.loc[survey_point_df["BT_ID"] == bt_id]["Alternative_S"].value_counts()
-        threatened_count = count_s.get("Threatened_S", 0)
-        alt_alien_count = count_s.get("Alt_Alien_S", 0)
-        alt_count = count_s.get("Alt_S", 0)
-        normal_count = count_s.get("Normal_S", 0)
-
-        if alt_count > 0:
-            similar_functional_species = 1
-        elif alt_alien_count > 0:
-            similar_functional_species = 0.5
-        else:
-            similar_functional_species = 0
-
-        table.append([bt_id, threatened_count, alt_alien_count, alt_count, normal_count, similar_functional_species])
-
-    result_df = pd.DataFrame(table, columns=["BT_ID", "Threatened_S", "Alt_Alien_S", "Alt_S", "Normal_S", "5_Similar_Functional_Species"])
-    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
-    return result_df
 
 
 def evaluate_inhabitation_of_food_resources(

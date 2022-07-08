@@ -274,6 +274,7 @@ class Biotools:
 
     def evaluate_similar_functional_species(
         self,
+        skip_noname: bool = True
     ):
         """Evaluate similar functional species.
 
@@ -281,11 +282,12 @@ class Biotools:
             Path to result file(shp).
         """
         result_shp = self._create_result_shp("f5")
-        f5 = foodchain.PieceoflandAvailability(
+        f5 = foodchain.SimilarFunctionalSpecies(
             self._biotope_wgs_shp,
             self._surveypoint_wgs_shp,
             self._foodchain_info_csv,
             result_shp,
+            skip_noname
         )
         return f5.run()
 
