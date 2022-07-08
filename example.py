@@ -21,6 +21,15 @@ def main():
     h5 = bt.run_h5()
     print(arcutils.shp_to_df(h5))
 
+    bt = Biotools(
+        "path/to/BiotopeMap.shp",
+        "path/to/result/",
+        environmentallayer_directory="path/to/envlayer/",
+        keystone_species_csv="path/to/keystone_species.csv"
+    )
+    h4 = bt.run_h4()
+    print(arcutils.shp_to_df(h4))
+
 
 if __name__ == "__main__":
     main()

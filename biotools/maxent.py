@@ -10,7 +10,7 @@ import pandas as pd
 def run_maxent(samplesfile: Union[str, PathLike],
                environmentallayers: Union[str, PathLike],
                outputdirectory: Union[str, PathLike],
-               **kwargs):
+               **kwargs) -> list[str]:
     """
     Args:
         `samplesfile`: PathLike
@@ -36,7 +36,6 @@ def run_maxent(samplesfile: Union[str, PathLike],
             `writebackgroundpredictions`: boolean, default `False`
     """
     kwargs.setdefault("skipifexists", True)
-    # kwargs.setdefault("askoverwrite", False)
     kwargs.setdefault("autorun", True)
     kwargs.setdefault("autofeature", True)
     kwargs.setdefault("responsecurves", True)
@@ -58,23 +57,13 @@ def run_maxent(samplesfile: Union[str, PathLike],
         ]
         command += kwargs_to_command(kwargs)
 
-    subprocess.run(command)
+    subprocess.run(command, capture_output=True)
 
     output_dir = Path(outputdirectory)
     summary_df = pd.read_csv(output_dir / "maxentResults.csv", encoding="euc-kr")
     name_s = summary_df["Species"]
-    return [output_dir / f"{name}.asc" for name in name_s]
-
+    return [str(output_dir / f"{name}.asc") for name in name_s]
 
 
 def kwargs_to_command(kwargs):
     return [f"{param}={arg}" for param, arg in kwargs.items()]
-
-
-# ascs = run_maxent(
-#     environmentallayers="D:/dev/uos/biotools/input/env",
-#     samplesfile="D:/dev/uos/biotools/input/기존_수원_까마귀.csv",
-#     outputdirectory="D:/dev/uos/biotools/output/maxent",
-# )
-
-# print(ascs)

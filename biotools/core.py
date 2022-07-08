@@ -44,7 +44,7 @@ class Biotools:
         if environmentallayer_directory is not None:
             self._environmentallayer_dir = Path(environmentallayer_directory).absolute()
         if keystone_species_csv is not None:
-            self._keystonespecies_csv = Path(keystone_species_csv).absolute()
+            self._keystone_species_csv = Path(keystone_species_csv).absolute()
         if commercialpoint_csv is not None:
             self._commercialpoint_csv = Path(commercialpoint_csv).absolute()
         if surveypoint_shp is not None:
@@ -66,6 +66,16 @@ class Biotools:
             )
         return newshp
 
+    def _create_result_shp(self, tag):
+        result = self._base_dir / f"result_{tag}" / (self._biotope_wgs_shp.stem + f"_{tag}.shp")
+        result.parent.mkdir(parents=True, exist_ok=True)
+        return result
+
+    def _create_maxent_dir(self, stem):
+        result = self._process_dir / (stem + "_maxent")
+        result.mkdir(parents=True, exist_ok=True)
+        return result
+
     def evaluate_habitat_size(
         self,
         lower_bounds: Sequence[float] = (50, 10, 1, 0),
@@ -86,11 +96,6 @@ class Biotools:
             scores
         )
         return h1.run()
-
-    def _create_result_shp(self, tag):
-        result = self._base_dir / f"result_{tag}" / (self._biotope_wgs_shp.stem + f"_{tag}.shp")
-        result.parent.mkdir(parents=True, exist_ok=True)
-        return result
 
     def evaluate_structured_layer(
         self,
@@ -127,13 +132,27 @@ class Biotools:
     def evaluate_leastcost_distribution(
         self,
     ):
-        pass
+        """Evaluate least cost distribution.
+
+        Return:
+            Path to result file(shp).
+        """
+        maxent_dir = self._create_maxent_dir(self._keystone_species_csv.stem)
+        result_shp = self._create_result_shp("h4")
+        h4 = habitat.LeastcostDistribution(
+            self._biotope_wgs_shp,
+            self._keystone_species_csv,
+            self._environmentallayer_dir,
+            maxent_dir,
+            result_shp,
+        )
+        return h4.run()
 
     def evaluate_pieceofland_occurrence(
         self,
         cellsize: float = 5
     ):
-        """Evaluate occurrence probability of piece of land
+        """Evaluate occurrence probability of piece of land.
 
         Return:
             Path to result file(shp).

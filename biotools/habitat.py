@@ -182,13 +182,53 @@ class LeastcostDistribution:
     def __init__(
         self,
         biotope_shp,
+        keystone_species_csv,
+        environmentallayer_dir,
+        maxent_dir,
         result_shp
     ):
         self._biotope_shp = str(biotope_shp)
+        self._keystone_species_csv = str(keystone_species_csv)
+        self._environmentallayer_dir = str(environmentallayer_dir)
+        self._maxent_dir = str(maxent_dir)
         self._result_shp = str(result_shp)
 
     def run(self):
-        pass
+        ascs = maxent.run_maxent(
+            self._keystone_species_csv,
+            self._environmentallayer_dir,
+            self._maxent_dir
+        )
+
+        complements = []
+        for asc in ascs:
+            complements.append(1 - arcpy.Raster(asc))
+
+        product = complements[0]
+        for complement in complements[1:]:
+            product *= complement
+
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+            result_table = arcpy.sa.ZonalStatisticsAsTable(
+                self._biotope_shp,
+                "BT_ID",
+                product,
+                "memory/result_table",
+                statistics_type="MEAN"
+            )
+        result_df = arcutils.shp_to_df(result_table)
+        arcpy.management.Delete(result_table)
+
+        result_df = result_df.drop(columns="ZONE_CODE")
+        result_df = result_df.rename(columns={
+            "COUNT": "H4_COUNT",
+            "AREA": "H4_AREA",
+            "MEAN": "H4_RESULT"
+        })
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"H4_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
 
 class PieceoflandOccurrence:
@@ -262,47 +302,6 @@ class PieceoflandAvailability:
 
     def run(self):
         pass
-
-
-def evaluate_least_cost_distribution(
-    biotope_shp: Union[str, PathLike],
-    keystone_csv: Union[str, PathLike],
-    environmentallayer_directory: Union[str, PathLike],
-    result_directory: Union[str, PathLike]
-):
-    """H4 - 서식지 연결성"""
-
-    base_dir = Path(result_directory)
-    process_dir = base_dir / "process"
-    maxent_dir = process_dir / (Path(keystone_csv).stem + "_maxent")
-
-    ascs = maxent.run_maxent(
-        keystone_csv,
-        environmentallayer_directory,
-        maxent_dir
-    )
-
-    with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
-        result_table = arcpy.sa.ZonalStatisticsAsTable(
-            biotope_shp,
-            "BT_ID",
-            str(ascs[0]),
-            "memory/result_table",
-            statistics_type="MEAN"
-        )
-    result_df = arcutils.shp_to_df(result_table)
-    arcpy.management.Delete(result_table)
-
-    result_df = result_df.assign(H4_RESULT=lambda x: 1 - x["MEAN"])
-    result_df = result_df.drop(columns=["MEAN", "ZONE_CODE"])
-    result_df = result_df.rename(columns={
-        "COUNT": "H4_COUNT",
-        "AREA": "H4_AREA",
-    })
-    biotope_df = arcutils.shp_to_df(biotope_shp)
-    result_df = biotope_df.merge(result_df, how="left", on="BT_ID")
-    result_df = result_df.fillna({"H4_RESULT": 0})
-    return result_df
 
 
 def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, cell_size=0.00001):
