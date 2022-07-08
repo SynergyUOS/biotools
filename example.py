@@ -16,6 +16,17 @@ def main():
     bt = Biotools(
         "path/to/BiotopeMap.shp",
         "path/to/result/",
+        environmentallayer_directory="path/to/envlayer/",
+        keystone_species_csv="path/to/keystone_species.csv"
+    )
+    h4 = bt.run_h4()
+    print(arcutils.shp_to_df(h4))
+    h6 = bt.run_h6()
+    print(arcutils.shp_to_df(h6))
+
+    bt = Biotools(
+        "path/to/BiotopeMap.shp",
+        "path/to/result/",
         commercialpoint_csv="path/to/commercialpoint.csv"
     )
     h5 = bt.run_h5()
@@ -24,13 +35,11 @@ def main():
     bt = Biotools(
         "path/to/BiotopeMap.shp",
         "path/to/result/",
-        environmentallayer_directory="path/to/envlayer/",
-        keystone_species_csv="path/to/keystone_species.csv"
+        surveypoint_shp="path/to/Surveypoint.shp",
+        foodchain_info_csv="path/to/foodchain_info.csv"
     )
-    h4 = bt.run_h4()
-    print(arcutils.shp_to_df(h4))
-    h6 = bt.run_h6()
-    print(arcutils.shp_to_df(h6))
+    f1 = bt.run_f1()
+    print(arcutils.shp_to_df(f1))
 
 
 if __name__ == "__main__":

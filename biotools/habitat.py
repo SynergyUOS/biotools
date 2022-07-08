@@ -171,7 +171,7 @@ class PatchIsolation:
         return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
 
-class LeastcostDistribution:
+class LeastCostDistribution:
 
     def __init__(
         self,

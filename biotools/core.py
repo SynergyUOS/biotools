@@ -27,13 +27,13 @@ class Biotools:
                 Recommend to use empty directory.
             `environmentallayer_directory`
                 Used at H4, H6, F6.
-            `keystonespecies_csv`
+            `keystone_species_csv`
                 Used at H4, H6.
             `commercialpoint_csv`
                 Used at H5.
             `surveypoint_shp`
                 Used at F1, F2, F3, F4, F5, F6
-            `foodchaininfo_csv`
+            `foodchain_info_csv`
                 Used at F1, F2, F3, F4, F5
         """
         self._base_dir = Path(result_directory).absolute()
@@ -129,7 +129,7 @@ class Biotools:
         )
         return h3.run()
 
-    def evaluate_leastcost_distribution(
+    def evaluate_least_cost_distribution(
         self
     ):
         """Evaluate least cost distribution.
@@ -139,7 +139,7 @@ class Biotools:
         """
         maxent_dir = self._create_maxent_dir(self._keystone_species_csv.stem)
         result_shp = self._create_result_shp("h4")
-        h4 = habitat.LeastcostDistribution(
+        h4 = habitat.LeastCostDistribution(
             self._biotope_wgs_shp,
             self._keystone_species_csv,
             self._environmentallayer_dir,
@@ -194,32 +194,94 @@ class Biotools:
         )
         return h6.run()
 
-    def evaluate_foodresource_count(
+    def evaluate_food_resource_count(
         self,
+        skip_noname: bool = True
     ):
-        pass
+        """Evaluate the number of food resources.
+
+        Return:
+            Path to result file(shp).
+        """
+        result_shp = self._create_result_shp("f1")
+        f1 = foodchain.FoodResourceCount(
+            self._biotope_wgs_shp,
+            self._surveypoint_wgs_shp,
+            self._foodchain_info_csv,
+            result_shp,
+            skip_noname
+        )
+        return f1.run()
 
     def evaluate_diversity_index(
         self,
     ):
-        pass
+        """Evaluate Shannon diversity index.
+
+        Return:
+            Path to result file(shp).
+        """
+        result_shp = self._create_result_shp("f2")
+        f2 = foodchain.DiversityIndex(
+            self._biotope_wgs_shp,
+            self._surveypoint_wgs_shp,
+            self._foodchain_info_csv,
+            result_shp,
+        )
+        return f2.run()
 
     def evaluate_combinable_producers_and_consumers(
         self,
     ):
-        pass
+        """Evaluate combinable producers and consumers.
+
+        Return:
+            Path to result file(shp).
+        """
+        result_shp = self._create_result_shp("f3")
+        f3 = foodchain.CombinableProducersAndConsumers(
+            self._biotope_wgs_shp,
+            self._surveypoint_wgs_shp,
+            self._foodchain_info_csv,
+            result_shp,
+        )
+        return f3.run()
 
     def evaluate_connection_strength(
         self,
     ):
-        pass
+        """Evaluate connection strength
+
+        Return:
+            Path to result file(shp).
+        """
+        result_shp = self._create_result_shp("f4")
+        f4 = foodchain.ConnectionStrength(
+            self._biotope_wgs_shp,
+            self._surveypoint_wgs_shp,
+            self._foodchain_info_csv,
+            result_shp,
+        )
+        return f4.run()
 
     def evaluate_similar_functional_species(
         self,
     ):
-        pass
+        """Evaluate similar functional species.
 
-    def evaluate_foodresource_inhabitation(
+        Return:
+            Path to result file(shp).
+        """
+        result_shp = self._create_result_shp("f5")
+        f5 = foodchain.PieceoflandAvailability(
+            self._biotope_wgs_shp,
+            self._surveypoint_wgs_shp,
+            self._foodchain_info_csv,
+            result_shp,
+        )
+        return f5.run()
+
+    def evaluate_food_resource_inhabitation(
         self,
     ):
         pass
@@ -227,13 +289,13 @@ class Biotools:
     run_h1 = evaluate_habitat_size
     run_h2 = evaluate_structured_layer
     run_h3 = evaluate_patch_isolation
-    run_h4 = evaluate_leastcost_distribution
+    run_h4 = evaluate_least_cost_distribution
     run_h5 = evaluate_pieceofland_occurrence
     run_h6 = evaluate_pieceofland_availability
 
-    run_f1 = evaluate_foodresource_count
+    run_f1 = evaluate_food_resource_count
     run_f2 = evaluate_diversity_index
     run_f3 = evaluate_combinable_producers_and_consumers
     run_f4 = evaluate_connection_strength
     run_f5 = evaluate_similar_functional_species
-    run_f6 = evaluate_foodresource_inhabitation
+    run_f6 = evaluate_food_resource_inhabitation

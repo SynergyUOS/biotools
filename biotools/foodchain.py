@@ -4,12 +4,180 @@ from pathlib import Path
 
 
 import arcpy
-import arcpy.analysis
-import arcpy.management
-import arcpy.sa
+import arcpy.analysis as aa
+import arcpy.management as am
+import arcpy.sa as asa
 import pandas as pd
 
 from biotools import arcutils, maxent, pdplus
+
+
+class FoodResourceCount:
+
+    def __init__(
+        self,
+        biotope_shp,
+        surveypoint_shp,
+        foodchin_info_csv,
+        result_shp,
+        skip_noname=True
+    ):
+        self._biotope_shp = str(biotope_shp)
+        self._surveypoint_shp = str(surveypoint_shp)
+        self._foodchain_info_df = pd.read_csv(foodchin_info_csv, encoding="euc-kr")
+        self._result_shp = str(result_shp)
+        self._skip_noname = skip_noname
+
+    def run(self):
+        joined = aa.SpatialJoin(
+            self._surveypoint_shp,
+            self._biotope_shp,
+            "memory/joined"
+        )
+        surveypoint_df = arcutils.shp_to_df(joined)
+        am.Delete(joined)
+
+        if self._skip_noname:
+            surveypoint_df = pd.merge(
+                surveypoint_df,
+                self._foodchain_info_df,
+                how="inner",
+                left_on="국명",
+                right_on="S_Name"
+            )
+        else:
+            surveypoint_df = pd.merge(
+                surveypoint_df,
+                self._foodchain_info_df,
+                how="outer",
+                left_on="국명",
+                right_on="S_Name"
+            )
+            noname_mask = (surveypoint_df["국명"] == " ")
+            surveypoint_df.loc[
+                noname_mask,
+                ["Owls_foods", "D_Level", "Alternative_s"]
+            ] = ["Normal_S", "D3", "Normal_S"]
+            surveypoint_df.loc[noname_mask, "국명"] = "Noname"
+
+        surveypoint_df["개체수"] = pd.to_numeric(
+            surveypoint_df["개체수"],
+            errors="coerce"
+        ).fillna(1)
+
+        table = []
+        for bt_id in surveypoint_df["BT_ID"].unique():
+            if bt_id is None:
+                continue
+            selected = surveypoint_df[surveypoint_df["BT_ID"] == bt_id]
+            total_count = selected["개체수"].sum()
+            prey_count = selected.loc[selected["Owls_foods"] == "Prey_S", "개체수"].sum()
+            result = prey_count / total_count
+            table.append([bt_id, prey_count, total_count, result])
+
+        result_df = pd.DataFrame(
+            table,
+            columns=["BT_ID", "F1_PREYNUM", "F1_ALLNUM", "F1_RESULT"]
+        )
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"F1_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+
+
+class DiversityIndex:
+
+    def __init__(
+        self,
+        biotope_shp,
+        surveypoint_shp,
+        foodchin_info_csv,
+        result_shp,
+    ):
+        self._biotope_shp = str(biotope_shp)
+        self._surveypoint_shp = str(surveypoint_shp)
+        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._result_shp = str(result_shp)
+
+    def run(self):
+        pass
+        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+
+
+class CombinableProducersAndConsumers:
+
+    def __init__(
+        self,
+        biotope_shp,
+        surveypoint_shp,
+        foodchin_info_csv,
+        result_shp,
+    ):
+        self._biotope_shp = str(biotope_shp)
+        self._surveypoint_shp = str(surveypoint_shp)
+        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._result_shp = str(result_shp)
+
+    def run(self):
+        pass
+        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+
+
+class ConnectionStrength:
+
+    def __init__(
+        self,
+        biotope_shp,
+        surveypoint_shp,
+        foodchin_info_csv,
+        result_shp,
+    ):
+        self._biotope_shp = str(biotope_shp)
+        self._surveypoint_shp = str(surveypoint_shp)
+        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._result_shp = str(result_shp)
+
+    def run(self):
+        pass
+        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+
+
+class SimilarFunctionalSpecies:
+
+    def __init__(
+        self,
+        biotope_shp,
+        surveypoint_shp,
+        foodchin_info_csv,
+        result_shp,
+    ):
+        self._biotope_shp = str(biotope_shp)
+        self._surveypoint_shp = str(surveypoint_shp)
+        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._result_shp = str(result_shp)
+
+    def run(self):
+        pass
+        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+
+
+class FoodResourceInhabitation:
+
+    def __init__(
+        self,
+        biotope_shp,
+        surveypoint_shp,
+        foodchin_info_csv,
+        result_shp,
+    ):
+        self._biotope_shp = str(biotope_shp)
+        self._surveypoint_shp = str(surveypoint_shp)
+        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._result_shp = str(result_shp)
+
+    def run(self):
+        pass
+        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
 
 def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df: pd.DataFrame) -> pd.DataFrame:
@@ -18,61 +186,19 @@ def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_inf
     SP_ID field will be added to `survey_point_layer` permanently.
     """
     if "SP_ID" not in arcutils.get_fields(survey_point_layer):
-        arcpy.management.CalculateField(survey_point_layer, "SP_ID", f"'SP_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
+        am.CalculateField(survey_point_layer, "SP_ID", f"'SP_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
 
     if "BT_ID" not in arcutils.get_fields(biotope_layer):
-        arcpy.management.CalculateField(biotope_layer, "BT_ID", f"'BT_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
+        am.CalculateField(biotope_layer, "BT_ID", f"'BT_ID!FID!'", expression_type="PYTHON3", field_type="TEXT")
 
-    joined_survey_point_layer = arcpy.analysis.SpatialJoin(survey_point_layer, biotope_layer, "memory/joined_survey_point_layer")
+    joined_survey_point_layer = aa.SpatialJoin(survey_point_layer, biotope_layer, "memory/joined_survey_point_layer")
 
     survey_point_df = arcutils.shp_to_df(joined_survey_point_layer)
     survey_point_df = pd.merge(survey_point_df, species_info_df, how="inner", left_on="국명", right_on="S_Name") # how="left"?
 
-    arcpy.management.Delete("memory/joined_survey_point_layer")
+    am.Delete("memory/joined_survey_point_layer")
 
     return survey_point_df
-
-
-def evaluate_number_of_food_resources(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, one_per_point=True) -> pd.DataFrame:
-    """F1 - 먹이자원 개체수
-
-    종 출현 정보 Point SHP는 전처리로 먹이자원종을 먼저 설정해줘야 함.
-    이 코드에서는 임위로 먹이종(곤충, 육상곤충, 포유류)을 1로, 아닌 종을 0으로 FR(Food Resources) 필드에 입력하였다.
-    개체수 필드를 미리 숫자형 데이터로 변경시키고, 출현 정보는 있는데 NoData가 되어 있는 경우가 있으니, NoData를 미리 1로 채울 필요가 있음.
-    """
-    biotope_df = arcutils.shp_to_df(biotope_layer)
-    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
-
-    table = []
-    for bt_id in survey_point_df["BT_ID"].unique():
-        if bt_id is None:
-            continue
-
-        if one_per_point:
-            prey_count, total_count = _count_one_per_row(survey_point_df[survey_point_df["BT_ID"] == bt_id], "Owls_foods", "Prey_S")
-        else:
-            prey_count, total_count = _count_vary_per_row(survey_point_df[survey_point_df["BT_ID"] == bt_id], "Owls_foods", "Prey_S", "개체수")
-
-        number_of_food_resources = prey_count / total_count
-        table.append([bt_id, prey_count, total_count, number_of_food_resources])
-
-    result_df = pd.DataFrame(table, columns=["BT_ID", "Prey_Snumber", "All_Snumber", "1_Number_of_Food_Resources"])
-    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
-    return result_df
-
-
-def _count_one_per_row(df: pd.DataFrame, field: str, target: str):
-    seq = df[field].tolist()
-    total_count = len(seq)
-    target_count = seq.count(target)
-    return target_count, total_count
-
-
-def _count_vary_per_row(df: pd.DataFrame, field: str, target: str, count_field: str):
-    count_s = pd.to_numeric(df[count_field], errors="coerce").fillna(1)
-    total_count = count_s.sum()
-    target_count = count_s[df[field] == target].sum()
-    return target_count, total_count
 
 
 def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
@@ -206,7 +332,7 @@ def evaluate_inhabitation_of_food_resources(
     surveypoint_itrf_shp = process_dir / new_name
 
     if not surveypoint_itrf_shp.exists():
-        arcpy.management.Project(
+        am.Project(
             surveypoint_shp,
             str(process_dir / new_name),
             arcutils.ITRF2000_PRJ
@@ -236,14 +362,14 @@ def evaluate_inhabitation_of_food_resources(
     mean_tif = process_dir / mean_name
 
     if not mean_tif.exists():
-        mean_raster = arcpy.sa.CellStatistics(
+        mean_raster = asa.CellStatistics(
             [str(asc) for asc in ascs],
             "MEAN"
         )
         mean_raster.save(str(mean_tif))
 
     with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
-        result_table = arcpy.sa.ZonalStatisticsAsTable(
+        result_table = asa.ZonalStatisticsAsTable(
             biotope_shp,
             "BT_ID",
             str(mean_tif),
@@ -251,7 +377,7 @@ def evaluate_inhabitation_of_food_resources(
             statistics_type="MEAN"
         )
     result_df = arcutils.shp_to_df(result_table)
-    arcpy.management.Delete(result_table)
+    am.Delete(result_table)
 
     result_df = result_df.rename(columns={
         "COUNT": "F6_COUNT",
