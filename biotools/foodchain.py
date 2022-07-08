@@ -26,45 +26,15 @@ class FoodResourceCount:
         self._foodchain_info_df = pd.read_csv(foodchin_info_csv, encoding="euc-kr")
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
-
-    def run(self):
-        joined = aa.SpatialJoin(
+        self._surverpoint = _Surveypoint(
             self._surveypoint_shp,
             self._biotope_shp,
-            "memory/joined"
-        )
-        surveypoint_df = arcutils.shp_to_df(joined)
-        am.Delete(joined)
-
-        surveypoint_df = pd.merge(
-            surveypoint_df,
-            self._foodchain_info_df,
-            how="left",
-            left_on="국명",
-            right_on="S_Name"
+            self._foodchain_info_df
         )
 
-        if self._skip_noname:
-            surveypoint_df = pdplus.drop_if(
-                surveypoint_df,
-                lambda x: x["국명"] == " "
-            )
-        else:
-            surveypoint_df = pdplus.replace_row(
-                surveypoint_df,
-                {
-                    "국명": "Noname",
-                    "Owls_foods": "Normal_S",
-                    "D_Level": "D3",
-                    "Alternative_s": "Normal_S"
-                },
-                lambda x: x["국명"] == " "
-            )
-
-        surveypoint_df["개체수"] = pd.to_numeric(
-            surveypoint_df["개체수"],
-            errors="coerce"
-        ).fillna(1)
+    def run(self):
+        self._surverpoint.enrich(self._skip_noname)
+        surveypoint_df = self._surverpoint.df
 
         table = []
         for bt_id, sub_df in surveypoint_df.groupby("BT_ID"):
@@ -92,17 +62,51 @@ class DiversityIndex:
         self,
         biotope_shp,
         surveypoint_shp,
-        foodchin_info_csv,
+        foodchain_info_csv,
         result_shp,
+        skip_noname=True
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._foodchain_info_df = pd.read_csv(foodchain_info_csv, encoding="euc-kr")
         self._result_shp = str(result_shp)
+        self._skip_noname = skip_noname
+        self._surverpoint = _Surveypoint(
+            self._surveypoint_shp,
+            self._biotope_shp,
+            self._foodchain_info_df
+        )
 
     def run(self):
-        pass
-        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+        self._surverpoint.enrich(self._skip_noname)
+        surveypoint_df = self._surverpoint.df
+
+        table = []
+        for bt_id, sub_df in surveypoint_df.groupby("BT_ID"):
+            if bt_id is None:
+                continue
+            count_s = sub_df[sub_df["Owls_foods"] == "Prey_S"].groupby("국명").sum()["개체수"]
+            shannon_index = self._get_shannon_index(count_s)
+            table.append([bt_id, count_s.sum(), shannon_index])
+
+        result_df = pd.DataFrame(table, columns=["BT_ID", "F2_PREY_N", "F2_SHANNON"])
+        result_df = result_df.assign(
+            F2_RESULT=lambda x: self._minmax_normalize(x["F2_SHANNON"])
+        )
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"F2_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+
+    def _get_shannon_index(self, counts):
+        total = sum(counts)
+        proportions = [count / total for count in counts]
+        return sum(-(p * math.log2(p)) for p in proportions)
+
+    def _minmax_normalize(self, seq):
+        maximum = max(seq)
+        minimum = min(seq)
+        return [(i - minimum) / (maximum - minimum) for i in seq]
 
 
 class CombinableProducersAndConsumers:
@@ -111,12 +115,12 @@ class CombinableProducersAndConsumers:
         self,
         biotope_shp,
         surveypoint_shp,
-        foodchin_info_csv,
+        foodchain_info_csv,
         result_shp,
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._foodchain_info_csv = str(foodchain_info_csv)
         self._result_shp = str(result_shp)
 
     def run(self):
@@ -130,12 +134,12 @@ class ConnectionStrength:
         self,
         biotope_shp,
         surveypoint_shp,
-        foodchin_info_csv,
+        foodchain_info_csv,
         result_shp,
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._foodchain_info_csv = str(foodchain_info_csv)
         self._result_shp = str(result_shp)
 
     def run(self):
@@ -149,12 +153,12 @@ class SimilarFunctionalSpecies:
         self,
         biotope_shp,
         surveypoint_shp,
-        foodchin_info_csv,
+        foodchain_info_csv,
         result_shp,
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._foodchain_info_csv = str(foodchain_info_csv)
         self._result_shp = str(result_shp)
 
     def run(self):
@@ -168,12 +172,12 @@ class FoodResourceInhabitation:
         self,
         biotope_shp,
         surveypoint_shp,
-        foodchin_info_csv,
+        foodchain_info_csv,
         result_shp,
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchin_info_csv = str(foodchin_info_csv)
+        self._foodchain_info_csv = str(foodchain_info_csv)
         self._result_shp = str(result_shp)
 
     def run(self):
@@ -200,41 +204,6 @@ def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_inf
     am.Delete("memory/joined_survey_point_layer")
 
     return survey_point_df
-
-
-def evaluate_diversity_index(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
-    """F2 - 생물다양성
-
-    [Shannon Index](https://en.wikipedia.org/wiki/Diversity_index#Shannon_index)
-    """
-    biotope_df = arcutils.shp_to_df(biotope_layer)
-    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
-
-    table = []
-    for bt_id in survey_point_df["BT_ID"].unique():
-        if bt_id is None:
-            continue
-
-        count_s = survey_point_df[survey_point_df["BT_ID"] == bt_id]["국명"].value_counts()
-        shannon_index = _get_shannon_index(count_s)
-        table.append([bt_id, count_s.sum(), shannon_index])
-
-    result_df = pd.DataFrame(table, columns=["BT_ID", "ALL_number", "H"])
-    result_df = result_df.assign(**{"2_Diversity_Index": lambda x: _minmax_normalize(x["H"])})
-
-    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
-    return result_df
-
-
-def _get_shannon_index(counts):
-    proportions = [count / sum(counts) for count in counts]
-    return sum(-(p * math.log2(p)) for p in proportions)
-
-
-def _minmax_normalize(seq):
-    maximum = max(seq)
-    minimum = min(seq)
-    return [(i - minimum) / (maximum - minimum) for i in seq]
 
 
 def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, scores: dict = None):
@@ -396,3 +365,51 @@ def evaluate_inhabitation_of_food_resources(
 def augment_name(path: PathLike, word: str) -> Path:
     path = Path(path)
     return path.with_stem(path.stem + word)
+
+
+class _Surveypoint:
+
+    def __init__(self, surveypoint_shp, biotope_shp, foodchain_info_df):
+        self._biotope_shp = str(biotope_shp)
+        self._surveypoint_shp = str(surveypoint_shp)
+        self._foodchain_info_df = foodchain_info_df
+        self._surverpoint_df = arcutils.shp_to_df(surveypoint_shp)
+
+    @property
+    def df(self):
+        return self._surverpoint_df
+
+    def enrich(self, skip_noname=True):
+        joined = aa.SpatialJoin(self._surveypoint_shp, self._biotope_shp, "memory/joined")
+        self._surverpoint_df = arcutils.shp_to_df(joined)
+        am.Delete(joined)
+
+        self._surverpoint_df = pd.merge(
+            self._surverpoint_df,
+            self._foodchain_info_df,
+            how="left",
+            left_on="국명",
+            right_on="S_Name"
+        )
+
+        if skip_noname:
+            self._surverpoint_df = pdplus.drop_if(
+                self._surverpoint_df,
+                lambda x: x["국명"] == " "
+            )
+        else:
+            self._surverpoint_df = pdplus.replace_row(
+                self._surverpoint_df,
+                {
+                    "국명": "Noname",
+                    "Owls_foods": "Normal_S",
+                    "D_Level": "D3",
+                    "Alternative_s": "Normal_S"
+                },
+                lambda x: x["국명"] == " "
+            )
+
+        self._surverpoint_df["개체수"] = pd.to_numeric(
+            self._surverpoint_df["개체수"],
+            errors="coerce"
+        ).fillna(1)

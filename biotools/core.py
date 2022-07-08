@@ -215,6 +215,7 @@ class Biotools:
 
     def evaluate_diversity_index(
         self,
+        skip_noname: bool = True
     ):
         """Evaluate Shannon diversity index.
 
@@ -227,6 +228,7 @@ class Biotools:
             self._surveypoint_wgs_shp,
             self._foodchain_info_csv,
             result_shp,
+            skip_noname
         )
         return f2.run()
 
