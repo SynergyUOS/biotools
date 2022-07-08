@@ -2,7 +2,6 @@ import math
 from os import PathLike
 from pathlib import Path
 
-
 import arcpy
 import arcpy.analysis as aa
 import arcpy.management as am
@@ -37,28 +36,30 @@ class FoodResourceCount:
         surveypoint_df = arcutils.shp_to_df(joined)
         am.Delete(joined)
 
+        surveypoint_df = pd.merge(
+            surveypoint_df,
+            self._foodchain_info_df,
+            how="left",
+            left_on="국명",
+            right_on="S_Name"
+        )
+
         if self._skip_noname:
-            surveypoint_df = pd.merge(
+            surveypoint_df = pdplus.drop_if(
                 surveypoint_df,
-                self._foodchain_info_df,
-                how="inner",
-                left_on="국명",
-                right_on="S_Name"
+                lambda x: x["국명"] == " "
             )
         else:
-            surveypoint_df = pd.merge(
+            surveypoint_df = pdplus.replace_row(
                 surveypoint_df,
-                self._foodchain_info_df,
-                how="outer",
-                left_on="국명",
-                right_on="S_Name"
+                {
+                    "국명": "Noname",
+                    "Owls_foods": "Normal_S",
+                    "D_Level": "D3",
+                    "Alternative_s": "Normal_S"
+                },
+                lambda x: x["국명"] == " "
             )
-            noname_mask = (surveypoint_df["국명"] == " ")
-            surveypoint_df.loc[
-                noname_mask,
-                ["Owls_foods", "D_Level", "Alternative_s"]
-            ] = ["Normal_S", "D3", "Normal_S"]
-            surveypoint_df.loc[noname_mask, "국명"] = "Noname"
 
         surveypoint_df["개체수"] = pd.to_numeric(
             surveypoint_df["개체수"],
@@ -66,18 +67,18 @@ class FoodResourceCount:
         ).fillna(1)
 
         table = []
-        for bt_id in surveypoint_df["BT_ID"].unique():
+        for bt_id, sub_df in surveypoint_df.groupby("BT_ID"):
             if bt_id is None:
                 continue
-            selected = surveypoint_df[surveypoint_df["BT_ID"] == bt_id]
-            total_count = selected["개체수"].sum()
-            prey_count = selected.loc[selected["Owls_foods"] == "Prey_S", "개체수"].sum()
+            count_s = sub_df.groupby("Owls_foods").sum()["개체수"]
+            total_count = count_s.sum()
+            prey_count = count_s.get("Prey_S", 0)
             result = prey_count / total_count
             table.append([bt_id, prey_count, total_count, result])
 
         result_df = pd.DataFrame(
             table,
-            columns=["BT_ID", "F1_PREYNUM", "F1_ALLNUM", "F1_RESULT"]
+            columns=["BT_ID", "F1_PREY_N", "F1_TOTAL_N", "F1_RESULT"]
         )
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")

@@ -70,7 +70,7 @@ Foodchain Info Table (먹이사슬 관계정보):
 - [ ] Foodchain (먹이사슬)
   - [ ] 7. Number of Food Resources (먹이자원의 개체 수)
     - [x] Implementation
-    - [ ] Encapsulation
+    - [x] Encapsulation
     - [ ] Documetation
   - [ ] 8. Diversity Index (종다양성)
     - [x] Implementation
