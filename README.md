@@ -1,5 +1,7 @@
 # `biotools` - Biotope Evaluation Toolset Using `arcpy`
-도시생태계 건강성 평가 12항목 (서식지 평가 6항목 + 먹이사슬 평가 6항목)
+
+12 health evaluations for urban ecosystem.
+Evaluations consist of 6 habitat evaluations and 6 foodchain evaulations.
 
 ## Prerequisites
 * Install ArcGIS Pro
@@ -7,28 +9,19 @@
 * Set `conda` environment to `arcgispro-py3`
 
 ## Data Preparation
-Biotope Map (도시생태현황도):
-* .shp
-* PCS_ITRF2000_TM
+Biotope Map: .shp, PCS_ITRF2000_TM
 
-Keystone Species Table (핵심종 출현정보):
-* .csv (encoding: euc-kr)
-* ITRF_2000_UTM_K
+Keystone Species Table: .csv, ITRF_2000_UTM_K
 
-Environmental Layers (환경변수지도):
-* .asc
-* ITRF_2000_UTM_K
+Environmental Layers: .asc, ITRF_2000_UTM_K
 
-Commercial Point Table (유동인구 or 발달상권 데이터):
-* .csv
-* GCS_WGS_1984
+Commercial Point Table: .csv, GCS_WGS_1984
 
-Surveypoint Map (생물종 출현정보):
-* .csv
-* PCS_ITRF2000_TM
+Surveypoint Map: .shp, PCS_ITRF2000_TM
 
-Foodchain Info Table (먹이사슬 관계정보):
-* .csv
+Foodchain Info Table: .csv
+
+*(All csv files are considered to be encoded using euc-kr.)*
 
 ||H1|H2|H3|H4|H5|H6|F1|F2|F3|F4|F5|F6|
 |-|-|-|-|-|-|-|-|-|-|-|-|-|
@@ -42,53 +35,53 @@ Foodchain Info Table (먹이사슬 관계정보):
 ## Usage
 
 ## To Do
-- [ ] Habitat (서식지)
-  - [ ] 1. Habitat Size (서식지 규모)
+- [ ] Habitat
+  - [ ] H1. Habitat Size
     - [x] Implementation
     - [x] Encapsulation
     - [ ] Documetation
-  - [ ] 2. Layered Structure (층위구조)
+  - [ ] H2. Layered Structure
     - [ ] Implementation
     - [x] Encapsulation
     - [ ] Documetation
-  - [ ] 3. Patch Isolation (패치고립도)
+  - [ ] H3. Patch Isolation
     - [x] Implementation
     - [x] Encapsulation
     - [ ] Documetation
-  - [ ] 4. Least Cost Distribution (최소비용 평균)
+  - [ ] H4. Least Cost Distribution
     - [x] Implementation
     - [x] Encapsulation
     - [ ] Documetation
-  - [ ] 5. Occurrence of Piece of Land (자투리땅 발생 가능성)
+  - [ ] H5. Occurrence of Piece of Land
     - [x] Implementation
     - [x] Encapsulation
     - [ ] Documetation
-  - [ ] 6. Availability of Piece of Land (자투리땅 활용 가능성)
+  - [ ] H6. Availability of Piece of Land
     - [x] Implementation
     - [x] Encapsulation
     - [ ] Documetation
-- [ ] Foodchain (먹이사슬)
-  - [ ] 7. Number of Food Resources (먹이자원의 개체 수)
+- [ ] Foodchain
+  - [ ] F1. Number of Food Resources
     - [x] Implementation
     - [x] Encapsulation
     - [ ] Documetation
-  - [ ] 8. Diversity Index (종다양성)
+  - [ ] F2. Diversity Index
     - [x] Implementation
     - [x] Encapsulation
     - [ ] Documetation
-  - [ ] 9. Combinable Producers and Consumers (조합가능한 생산자와 소비자)
+  - [ ] F3. Combinable Producers and Consumers
     - [x] Implementation
     - [x] Encapsulation
     - [ ] Documetation
-  - [ ] 10. Connection Strength (연결 강도)
+  - [ ] F4. Connection Strength
+    - [x] Implementation
+    - [x] Encapsulation
+    - [ ] Documetation
+  - [ ] F5. Similar Functional Species
     - [x] Implementation
     - [ ] Encapsulation
     - [ ] Documetation
-  - [ ] 11. Similar Functional Species (유사기능종)
-    - [x] Implementation
-    - [ ] Encapsulation
-    - [ ] Documetation
-  - [ ] 12. Inhabitation of Food Resources (먹이자원 서식확률)
+  - [ ] F6. Inhabitation of Food Resources
     - [x] Implementation
     - [ ] Encapsulation
     - [ ] Documetation

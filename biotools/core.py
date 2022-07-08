@@ -255,6 +255,7 @@ class Biotools:
 
     def evaluate_connection_strength(
         self,
+        skip_noname: bool = True
     ):
         """Evaluate connection strength
 
@@ -267,6 +268,7 @@ class Biotools:
             self._surveypoint_wgs_shp,
             self._foodchain_info_csv,
             result_shp,
+            skip_noname
         )
         return f4.run()
 

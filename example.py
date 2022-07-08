@@ -44,6 +44,9 @@ def main():
     print(arcutils.shp_to_df(f2))
     f3 = bt.run_f3()
     print(arcutils.shp_to_df(f3))
+    f4 = bt.run_f4()
+    print(arcutils.shp_to_df(f4))
+
 
 if __name__ == "__main__":
     main()

@@ -155,6 +155,7 @@ class CombinableProducersAndConsumers:
         result_df = result_df.fillna({"F3_RESULT": 0})
         return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
+
 class ConnectionStrength:
 
     def __init__(
@@ -163,15 +164,36 @@ class ConnectionStrength:
         surveypoint_shp,
         foodchain_info_csv,
         result_shp,
+        skip_noname=True,
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchain_info_csv = str(foodchain_info_csv)
+        self._foodchain_info_df = pd.read_csv(foodchain_info_csv, encoding="euc-kr")
         self._result_shp = str(result_shp)
+        self._skip_noname = skip_noname
+        self._surverpoint = _Surveypoint(
+            self._surveypoint_shp,
+            self._biotope_shp,
+            self._foodchain_info_df
+        )
 
     def run(self):
-        pass
-        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+        self._surverpoint.enrich(self._skip_noname)
+        surveypoint_df = self._surverpoint.df
+
+        table = []
+        for bt_id, sub_df in surveypoint_df.groupby("BT_ID"):
+            if bt_id is None:
+                continue
+            count_s = sub_df["Owls_foods"].value_counts()
+            prey_count = count_s.get("Prey_S", 0)
+            table.append([bt_id, prey_count, int(prey_count > 0)])
+
+        result_df = pd.DataFrame(table, columns=["BT_ID", "F4_PREY_N", "F4_RESULT"])
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"F4_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
 
 class SimilarFunctionalSpecies:
@@ -231,54 +253,6 @@ def _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_inf
     am.Delete("memory/joined_survey_point_layer")
 
     return survey_point_df
-
-
-def evaluate_combinable_producers_and_consumers(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame, scores: dict = None):
-    """F3 - 조합가능한 생산자와 소비자 (영양레벨)"""
-    if scores is None:
-        scores = {
-            3: 1.0,
-            2: 0.6,
-            1: 0.3
-        }
-
-    biotope_df = arcutils.shp_to_df(biotope_layer)
-    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
-
-    table = []
-    for bt_id in survey_point_df["BT_ID"].unique():
-        if bt_id is None:
-            continue
-
-        count_s = survey_point_df[survey_point_df["BT_ID"] == bt_id]["D_Level"].value_counts()
-        d1_count = count_s.get("D1", 0)
-        d2_count = count_s.get("D2", 0)
-        d3_count = count_s.get("D3", 0)
-        score = scores[count_s.count()]
-        table.append([bt_id, d1_count, d2_count, d3_count, score])
-
-    result_df = pd.DataFrame(table, columns=["BT_ID", "D1_count", "D2_count", "D3_count", "3_Combinable_Producers_and_Consumers"])
-    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
-    return result_df
-
-
-def evaluate_connection_strength(biotope_layer, survey_point_layer, species_info_df: pd.DataFrame):
-    """F4 - 연결강도"""
-    biotope_df = arcutils.shp_to_df(biotope_layer)
-    survey_point_df = _get_enriched_survey_point_df(survey_point_layer, biotope_layer, species_info_df)
-
-    table = []
-    for bt_id in survey_point_df["BT_ID"].unique():
-        if bt_id is None:
-            continue
-
-        count_s = survey_point_df[survey_point_df["BT_ID"] == bt_id]["Owls_foods"].value_counts()
-        prey_count = count_s.get("Prey_S", 0)
-        table.append([bt_id, prey_count, int(prey_count > 0)])
-
-    result_df = pd.DataFrame(table, columns=["BT_ID", "Prey_Snumber", "4_Connection_Strength"])
-    result_df = pdplus.left_merge_with_default(biotope_df, result_df, "BT_ID", 0)
-    return result_df
 
 
 def evaluate_similar_functional_species(biotope_layer, survey_point_layer, species_info_df):
