@@ -1,11 +1,16 @@
 import importlib.resources
 from os import PathLike
 from pathlib import Path
-from typing import Union
+from typing import Sequence, Union
 
 import arcpy
 import arcpy.management as am
 import pandas as pd
+
+
+def _init_projection(name):
+    with importlib.resources.path("biotools.res", name) as path:
+        return arcpy.SpatialReference(path)
 
 
 def _init_biotope_codes():
@@ -18,31 +23,25 @@ def _init_biotope_codes():
     return result
 
 
-BIOTOPE_CODES = _init_biotope_codes()
-
-
-def _init_projection(name):
-    with importlib.resources.path("biotools.res", name) as path:
-        return arcpy.SpatialReference(path)
-
-
 WGS1984_PRJ = _init_projection("GCS_WGS_1984.prj")
 ITRF2000_PRJ = _init_projection("ITRF_2000_UTM_K.prj")
 
+BIOTOPE_CODES = _init_biotope_codes()
 
-def get_biotope_codes(large_codes):
+
+def get_medium_codes(large_codes):
     result = []
     for large_code in large_codes:
         result += BIOTOPE_CODES[large_code]
     return result
 
 
+def query_isin(field, targets):
+    return " OR ".join([f"{field} = '{target}'" for target in targets])
+
+
 def get_fields(layer):
     return [field.name for field in arcpy.ListFields(str(layer))]
-
-
-def get_oid_field(layer):
-    return arcpy.ListFields(layer, field_type="OID")[0].name
 
 
 def shp_to_df(shp: Union[str, PathLike]):
@@ -54,54 +53,9 @@ def shp_to_df(shp: Union[str, PathLike]):
     return result_df
 
 
-def get_medium_codes(large_codes):
-    result = []
-    for large_code in large_codes:
-        result += BIOTOPE_CODES[large_code]
-    return result
-
-
-def make_isin_query(field, large_category_codes):
-    medium_category_codes = []
-    for large_category_code in large_category_codes:
-        medium_category_codes += BIOTOPE_CODES[large_category_code]
-    return " OR ".join([f"{field} = '{code}'" for code in medium_category_codes])
-
-
-def query_isin(field, targets):
-    return " OR ".join([f"{field} = '{target}'" for target in targets])
-
-
-def get_cs(layer):
+def get_coordsys(layer):
     """for debug"""
     return arcpy.Describe(layer).spatialReference.name
-
-
-def fix_fid(layer):
-    """Create BT_ID field to `biotope_layer` permanently."""
-    if "BT_ID" not in get_fields(layer):
-        result = arcpy.management.CalculateField(
-            layer,
-            "BT_ID",
-            f"'BT_ID_!FID!'",
-            expression_type="PYTHON3",
-            field_type="TEXT"
-        )
-    return
-
-
-def load_asc(path, prj):
-    """Deletion is required.
-    ```
-    raster = arcutils.load_asc(path, prj)
-    # some processes...
-    arcpy.management.Delete(raster)
-    ```
-    """
-    temp_name = f"memory/{Path(path).stem}"
-    result = arcpy.management.CopyRaster(path, temp_name)
-    arcpy.management.DefineProjection(result, prj)
-    return result
 
 
 def clean_join(target_shp, df, result_shp, on="BT_ID"):
@@ -124,3 +78,13 @@ def clean_join(target_shp, df, result_shp, on="BT_ID"):
         am.DeleteField(result_shp, field.name)
 
     return result_shp
+
+
+def any_raster(rasters: Sequence[arcpy.Raster]):
+    """For each cell, get the probability that at least one probability will be true.
+    """
+    complements = [1.0 - raster for raster in rasters]
+    product = complements[0]
+    for complement in complements[1:]:
+        product *= complement
+    return 1.0 - product

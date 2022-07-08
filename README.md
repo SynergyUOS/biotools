@@ -65,7 +65,7 @@ Foodchain Info Table (먹이사슬 관계정보):
     - [ ] Documetation
   - [ ] 6. Availability of Piece of Land (자투리땅 활용 가능성)
     - [x] Implementation
-    - [ ] Encapsulation
+    - [x] Encapsulation
     - [ ] Documetation
 - [ ] Foodchain (먹이사슬)
   - [ ] 7. Number of Food Resources (먹이자원의 개체 수)

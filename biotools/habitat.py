@@ -1,19 +1,13 @@
-from os import PathLike
 from pathlib import Path
-from typing import Sequence, Union
 
 import arcpy
-import arcpy.analysis
-import arcpy.management
-
 import arcpy.analysis as aa
 import arcpy.management as am
 import arcpy.sa as asa
-import arcpy.sa
 import numpy as np
 import pandas as pd
 
-from biotools import arcutils, pdplus, maxent
+from biotools import arcutils, maxent
 
 
 class HabitatSize:
@@ -55,7 +49,7 @@ class HabitatSize:
             )
 
             with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
-                arcpy.analysis.SpatialJoin(
+                aa.SpatialJoin(
                     self._biotope_shp,
                     dissolved,
                     self._sized_shp,
@@ -200,30 +194,24 @@ class LeastcostDistribution:
             self._maxent_dir
         )
 
-        complements = []
-        for asc in ascs:
-            complements.append(1 - arcpy.Raster(asc))
-
-        product = complements[0]
-        for complement in complements[1:]:
-            product *= complement
-
+        probability_raster = arcutils.any_raster([arcpy.Raster(asc) for asc in ascs])
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
-            result_table = arcpy.sa.ZonalStatisticsAsTable(
+            result_table = asa.ZonalStatisticsAsTable(
                 self._biotope_shp,
                 "BT_ID",
-                product,
+                probability_raster,
                 "memory/result_table",
                 statistics_type="MEAN"
             )
         result_df = arcutils.shp_to_df(result_table)
-        arcpy.management.Delete(result_table)
+        am.Delete(result_table)
 
+        result_df = result_df.assign(H4_RESULT=lambda x: 1 - x["MEAN"])
         result_df = result_df.drop(columns="ZONE_CODE")
         result_df = result_df.rename(columns={
             "COUNT": "H4_COUNT",
             "AREA": "H4_AREA",
-            "MEAN": "H4_RESULT"
+            "MEAN": "H4_MEAN"
         })
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
@@ -238,7 +226,7 @@ class PieceoflandOccurrence:
         biotope_shp,
         commercialpoint_csv,
         result_shp,
-        cellsize
+        cellsize=5
     ):
         self._biotope_shp = str(biotope_shp)
         self._result_shp = str(result_shp)
@@ -254,7 +242,7 @@ class PieceoflandOccurrence:
             coordinate_system=arcutils.WGS1984_PRJ
         )
 
-        selected = am.SelectLayerByLocation(
+        selected = am.SelectLayerByLocation(        # for efficiency
             commercialpoint_layer,
             "INTERSECT",
             self._biotope_shp,
@@ -295,91 +283,58 @@ class PieceoflandAvailability:
     def __init__(
         self,
         biotope_shp,
-        result_shp
+        keystone_species_csv,
+        environmentallayer_dir,
+        maxent_dir,
+        result_shp,
+        threshold=0.5,
+        cellsize=5
     ):
         self._biotope_shp = str(biotope_shp)
+        self._keystone_species_csv = str(keystone_species_csv)
+        self._environmentallayer_dir = str(environmentallayer_dir)
+        self._maxent_dir = str(maxent_dir)
         self._result_shp = str(result_shp)
+        self._threshold = threshold
+        self._cellsize = cellsize
 
     def run(self):
-        pass
-
-
-def evaluate_occurrence_of_piece_of_land(biotope_layer, commercial_point_layer, cell_size=0.00001):
-    """H5 - 자투리땅 발생 가능성
-
-    Option: 경기도 전체에서 Euq하면 계산 처리가 불가능할 수도 있으니 비오톱 지도 범위만 선택해서 Euclidean Distance를 하는게 좋음.
-    CellSize: Defalt는 1m. 분석지역의 비오톱지도 중 가장 작은 비오톱에 하나 이상의 셀이 들어갈 수 있도록 설정함.
-    가장 작은 비오톱보다 셀 사이즈가 크면 Zonal Statistics에서 계산 못함.
-    (ITRF -> 1, WGS -> 0.00001)
-    """
-    selected_commercial_point_layer = arcpy.management.SelectLayerByLocation(commercial_point_layer, "INTERSECT", biotope_layer, "5 Kilometers")
-    distance_raster = arcpy.sa.EucDistance(selected_commercial_point_layer, cell_size=cell_size)
-
-    result_table = arcpy.sa.ZonalStatisticsAsTable(
-        biotope_layer, "FID", distance_raster, "memory/result_table", "DATA", "MINIMUM", "CURRENT_SLICE", 90, "AUTO_DETECT")
-
-    arcpy.management.SelectLayerByAttribute(biotope_layer, "CLEAR_SELECTION")
-
-    biotope_df = arcutils.shp_to_df(biotope_layer)
-    result_df = arcutils.shp_to_df(result_table)
-
-    max_distance = result_df["MIN"].max()
-    result_df = result_df.assign(result=lambda x: x["MIN"] / max_distance)
-    result_df = result_df.rename(columns={
-        "COUNT": "H5_COUNT",
-        "AREA": "H5_AREA",
-        "MIN": "H5_MIN",
-        "result": "H5_RESULT"
-    })
-    return pdplus.left_merge_with_default(biotope_df, result_df, on="FID", default=0)
-
-
-def evaluate_availability_of_piece_of_land(
-    biotope_shp: Union[str, PathLike],
-    keystone_csv: Union[str, PathLike],
-    environmentallayer_directory: Union[str, PathLike],
-    result_directory: Union[str, PathLike]
-):
-    """H6 - 자투리땅 활용 가능성"""
-    base_dir = Path(result_directory)
-    process_dir = base_dir / "process"
-    maxent_dir = process_dir / (Path(keystone_csv).stem + "_maxent")
-
-    ascs = maxent.run_maxent(
-        keystone_csv,
-        environmentallayer_directory,
-        maxent_dir
-    )
-
-    main_habitat_raster = arcpy.sa.Con(arcpy.Raster(str(ascs[0])) >= 0.5, 1)
-    distance_raster = arcpy.sa.EucDistance(main_habitat_raster, cell_size=5)
-
-    query = arcutils.make_isin_query("비오톱", [16])
-    arcpy.management.SelectLayerByAttribute(biotope_shp, "NEW_SELECTION", query)
-
-    with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
-        result_table = arcpy.sa.ZonalStatisticsAsTable(
-            biotope_shp,
-            "BT_ID",
-            distance_raster,
-            "memory/result_table",
-            statistics_type="MINIMUM"
+        ascs = maxent.run_maxent(
+            self._keystone_species_csv,
+            self._environmentallayer_dir,
+            self._maxent_dir
         )
 
-    arcpy.management.SelectLayerByAttribute(biotope_shp, "CLEAR_SELECTION")
-    result_df = arcutils.shp_to_df(result_table)
-    arcpy.management.Delete(result_table)
+        probability_raster = arcutils.any_raster([arcpy.Raster(asc) for asc in ascs])
+        main_habitat_raster = asa.Con(probability_raster >= self._threshold, 1)
+        distance_raster = asa.EucDistance(main_habitat_raster, cell_size=self._cellsize)
 
-    maximum = result_df["MIN"].max()
-    result_df = result_df.assign(H6_RESULT=lambda x: 1 - (x["MIN"] / maximum))
-    result_df = result_df.rename(columns={
-        "COUNT": "H6_COUNT",
-        "AREA": "H6_AREA",
-        "MIN": "H6_MIN",
-    })
-    result_df = result_df.drop(columns="ZONE_CODE")
+        medium_codes = arcutils.get_medium_codes([16])
+        query = arcutils.query_isin("비오톱", medium_codes)
+        selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)
 
-    biotope_df = arcutils.shp_to_df(biotope_shp)
-    result_df = pd.merge(biotope_df["BT_ID"], result_df, on="BT_ID", how="left")
-    result_df = result_df.fillna({"H6_RESULT": 0})
-    return result_df
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+            result_table = asa.ZonalStatisticsAsTable(
+                selected,
+                "BT_ID",
+                distance_raster,
+                "memory/result_table",
+                statistics_type="MINIMUM"
+            )
+
+        result_df = arcutils.shp_to_df(result_table)
+        am.Delete(result_table)
+
+        maximum = result_df["MIN"].max()
+        result_df = result_df.assign(H6_RESULT=lambda x: 1 - (x["MIN"] / maximum))
+        result_df = result_df.drop(columns="ZONE_CODE")
+        result_df = result_df.rename(columns={
+            "COUNT": "H6_COUNT",
+            "AREA": "H6_AREA",
+            "MIN": "H6_MIN",
+        })
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"H6_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+

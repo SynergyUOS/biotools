@@ -130,7 +130,7 @@ class Biotools:
         return h3.run()
 
     def evaluate_leastcost_distribution(
-        self,
+        self
     ):
         """Evaluate least cost distribution.
 
@@ -154,6 +154,11 @@ class Biotools:
     ):
         """Evaluate occurrence probability of piece of land.
 
+        Args:
+            `cellsize`: `float`, default 5.
+                Cellsize should be less than the smallest biotope. If a biotope is too small
+                to contain a cell, ZonalStatistics will skip the biotope.
+
         Return:
             Path to result file(shp).
         """
@@ -168,8 +173,26 @@ class Biotools:
 
     def evaluate_pieceofland_availability(
         self,
+        threshold: float = 0.5,
+        cellsize: float = 5
     ):
-        pass
+        """Evaluate Availability of Piece of Land.
+
+        Return:
+            Path to result file(shp).
+        """
+        maxent_dir = self._create_maxent_dir(self._keystone_species_csv.stem)
+        result_shp = self._create_result_shp("h6")
+        h6 = habitat.PieceoflandAvailability(
+            self._biotope_wgs_shp,
+            self._keystone_species_csv,
+            self._environmentallayer_dir,
+            maxent_dir,
+            result_shp,
+            threshold,
+            cellsize
+        )
+        return h6.run()
 
     def evaluate_foodresource_count(
         self,

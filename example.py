@@ -29,6 +29,8 @@ def main():
     )
     h4 = bt.run_h4()
     print(arcutils.shp_to_df(h4))
+    h6 = bt.run_h6()
+    print(arcutils.shp_to_df(h6))
 
 
 if __name__ == "__main__":
