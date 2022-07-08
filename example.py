@@ -40,7 +40,10 @@ def main():
     )
     f1 = bt.run_f1()
     print(arcutils.shp_to_df(f1))
-
+    f2 = bt.run_f2()
+    print(arcutils.shp_to_df(f2))
+    f3 = bt.run_f3()
+    print(arcutils.shp_to_df(f3))
 
 if __name__ == "__main__":
     main()

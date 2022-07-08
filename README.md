@@ -74,11 +74,11 @@ Foodchain Info Table (먹이사슬 관계정보):
     - [ ] Documetation
   - [ ] 8. Diversity Index (종다양성)
     - [x] Implementation
-    - [ ] Encapsulation
+    - [x] Encapsulation
     - [ ] Documetation
   - [ ] 9. Combinable Producers and Consumers (조합가능한 생산자와 소비자)
     - [x] Implementation
-    - [ ] Encapsulation
+    - [x] Encapsulation
     - [ ] Documetation
   - [ ] 10. Connection Strength (연결 강도)
     - [x] Implementation

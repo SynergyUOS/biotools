@@ -117,16 +117,43 @@ class CombinableProducersAndConsumers:
         surveypoint_shp,
         foodchain_info_csv,
         result_shp,
+        skip_noname=True,
+        scores=(1, 0.6, 0.3)
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchain_info_csv = str(foodchain_info_csv)
+        self._foodchain_info_df = pd.read_csv(foodchain_info_csv, encoding="euc-kr")
         self._result_shp = str(result_shp)
+        self._skip_noname = skip_noname
+        self._scores = scores
+        self._surverpoint = _Surveypoint(
+            self._surveypoint_shp,
+            self._biotope_shp,
+            self._foodchain_info_df
+        )
 
     def run(self):
-        pass
-        # return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+        self._surverpoint.enrich(self._skip_noname)
+        surveypoint_df = self._surverpoint.df
 
+        table = []
+        for bt_id, sub_df in surveypoint_df.groupby("BT_ID"):
+            if bt_id is None:
+                continue
+            count_s = sub_df["D_Level"].value_counts()
+            d_counts = [count_s.get(d_name, 0) for d_name in ["D1", "D2", "D3"]]
+            unique_count = sum(bool(d_count) for d_count in d_counts)
+            score = self._scores[3 - unique_count]
+            table.append([bt_id, *d_counts, score])
+
+        result_df = pd.DataFrame(
+            table,
+            columns=["BT_ID", "F3_D1_N", "F3_D2_N", "F3_D3_N", "F3_RESULT"]
+        )
+        biotope_df = arcutils.shp_to_df(self._biotope_shp)
+        result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
+        result_df = result_df.fillna({"F3_RESULT": 0})
+        return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
 class ConnectionStrength:
 

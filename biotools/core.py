@@ -234,6 +234,8 @@ class Biotools:
 
     def evaluate_combinable_producers_and_consumers(
         self,
+        skip_noname: bool = True,
+        scores: Sequence[float] = (1, 0.6, 0.3),
     ):
         """Evaluate combinable producers and consumers.
 
@@ -246,6 +248,8 @@ class Biotools:
             self._surveypoint_wgs_shp,
             self._foodchain_info_csv,
             result_shp,
+            skip_noname,
+            scores
         )
         return f3.run()
 
