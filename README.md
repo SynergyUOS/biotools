@@ -36,12 +36,17 @@ Each tool evaluates the following:
    ```console
    $ conda create --name cloned-env --clone arcgispro-py3
    ```
-2. Place biotools package folder in "path/to/cloned-env/Lib/".
-   * Or, just place somewhere python can find including your current directory.
+2. Place biotools package folder in
+   * path/to/cloned-env/Lib/
+   * or the same folder as your script.
 
 ### Run
 1. Write a script with biotools. ([how?](#usage))
-2. Activate the cloned conda environment. (here, *cloned-env*)
+2. Activate the cloned conda environment.
+   ```console
+   $ conda activate cloned-env
+   (cloned-env) $
+   ```
 3. Run your script.
    ```console
    (cloned-env) $ python path/to/your_script.py
@@ -53,16 +58,16 @@ Each tool evaluates the following:
 ### Specification
 ||File Format|Coordnate System|Fields|
 |-|-|-|-|
-|Biotope Map           |Shapefile|Defined|비오톱|
+|Biotope Map           |Shapefile|Anything but nothing|비오톱, [...]|
 |Environmental Layers  |Esri ASCII raster|ITRF_2000_UTM_K|-|
-|Keystone Species Table|CSV|ITRF_2000_UTM_K|[Name], [Longitude], [Latitude]|
-|Commercial Point Table|CSV|GCS_WGS_1984|위도, 경도|
-|Surveypoint Map       |Shapefile|Defined|국명, 개체수|
-|Foodchain Info Table  |CSV|-|S_Name, Owls_foods, D_Level, Alternatives_S|
+|Keystone Species Table|CSV|ITRF_2000_UTM_K|{Name}, {Longitude}, {Latitude}|
+|Commercial Point Table|CSV|GCS_WGS_1984|위도, 경도, [...]|
+|Surveypoint Map       |Shapefile|Anything but nothing|국명, 개체수, [...]|
+|Foodchain Info Table  |CSV|-|S_Name, Owls_foods, D_Level, Alternatives_S, [...]|
 
 *(All csv files are considered to be encoded using euc-kr.)*
 
-*(Brackets can be replaced by another name, if it sticks to same order.)*
+*(Braces can be replaced by another name, if it sticks to same order.)*
 
 *(Values of 비오톱 field must be one of the values in MEDIUM_CATEGORY_CODE field of [this file](biotools/res/biotope_codes.csv).)*
 
@@ -88,7 +93,7 @@ bt = Biotools(
     "path/to/result/",  # results are saved in this folder
 )
 
-bt.run_h1()  # will create result shapefile in path/to/result/result_xx/
+bt.run_h1()  # will create result shapefile in path/to/result/result_{id}/
 ```
 
 ### With Additional Inputs
