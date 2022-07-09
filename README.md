@@ -20,20 +20,20 @@ Each tool evaluates the following:
 |Inhabitation of Food Resources    |F6||
 
 
-# Getting Started
+## Getting Started
 
-## Prerequisites
+### Prerequisites
 * Install ArcGIS Pro
 * Install Java 1.4+ for maxent
 * Set `conda` environment to `arcgispro-py3`
 
-## Installation
+### Installation
 [procedure for installation]
 
 
-# Data Required
+## Data Required
 
-## Specification
+### Specification
 ||File Format|Coordnate System|Fields|
 |-|-|-|-|
 |Biotope Map           |Shapefile|Defined|비오톱|
@@ -47,7 +47,7 @@ Each tool evaluates the following:
 
 *(Brackets can be replaced by another name, if it sticks to same order.)*
 
-## Where to Use
+### Where to Use
 ||H1|H2|H3|H4|H5|H6|F1|F2|F3|F4|F5|F6|
 |-|-|-|-|-|-|-|-|-|-|-|-|-|
 |Biotope Map           |✔|✔|✔|✔|✔|✔|✔|✔|✔|✔|✔|✔|
@@ -58,11 +58,11 @@ Each tool evaluates the following:
 |Foodchain Info Table  | | | | | | |✔|✔|✔|✔|✔| |
 
 
-# Usage
+## Usage
 [how to use]
 
 
-# To Do
+## To Do
 - [ ] Habitat
   - [ ] H1. Habitat Size
     - [x] Implementation
