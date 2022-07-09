@@ -59,6 +59,8 @@ def get_coordsys(layer):
 
 
 def clean_join(target_shp, df, result_shp, on="BT_ID"):
+    target_shp = str(target_shp)
+    result_shp = str(result_shp)
     temp_csv = str(Path(result_shp).with_suffix(".csv"))
     df.to_csv(temp_csv, encoding="euc-kr", index=False)
 

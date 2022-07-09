@@ -59,6 +59,9 @@ def main():
     f6 = bt.run_f6()
     print(arcutils.shp_to_df(f6))
 
+    full = bt.merge()
+    print(arcutils.shp_to_df(full))
+
 
 if __name__ == "__main__":
     main()

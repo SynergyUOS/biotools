@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Sequence, Union
 
 import arcpy.management as am
+import pandas as pd
 
 from biotools import arcutils, habitat, foodchain
 
@@ -317,6 +318,18 @@ class Biotools:
         )
         return f6.run()
 
+    def merge(self):
+        result_df = arcutils.shp_to_df(self._biotope_wgs_shp)[["BT_ID"]]
+        habitats = sorted(self._base_dir.glob("result_h[1-6]/*.csv"))
+        foodchains = sorted(self._base_dir.glob("result_f[1-6]/*.csv"))
+        for path in habitats + foodchains:
+            df = pd.read_csv(path)
+            result_df = result_df.merge(df, how="left", on="BT_ID")
+
+        result_path = self._create_result_shp("full")
+        return arcutils.clean_join(self._biotope_wgs_shp, result_df, result_path)
+
+    # aliasing
     run_h1 = evaluate_habitat_size
     run_h2 = evaluate_structured_layer
     run_h3 = evaluate_patch_isolation
