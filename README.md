@@ -23,12 +23,28 @@ Each tool evaluates the following:
 ## Getting Started
 
 ### Prerequisites
-* Install ArcGIS Pro
-* Install Java 1.4+ for maxent
-* Set `conda` environment to `arcgispro-py3`
+* Install ArcGIS Pro 3.0+. (maybe 2.8 is also available...)
+* Install Java 1.4+. (for maxent)
+  ```console
+  $ java -version
+  java version "1.8.0_331"
+  ```
 
 ### Installation
-[procedure for installation]
+* Clone arcgispro-py3 conda environment.
+  ```console
+  $ conda create --name cloned-env --clone arcgispro-py3
+  ```
+* Place biotools package folder in "path/to/cloned-env/Lib/".
+  * Or, just place somewhere python can find including your current directory.
+
+### Run
+* Write a script with biotools. ([how?](README.md#usage))
+* Activate the cloned conda environment. (here, cloned-env)
+* Run your script.
+  ```console
+  (cloned-env) $ python path/to/your_script.py
+  ```
 
 
 ## Data Required
