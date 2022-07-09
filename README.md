@@ -48,7 +48,7 @@ Each tool evaluates the following:
    ```
 
 
-## Data Required
+## Input Required
 
 ### Specification
 ||File Format|Coordnate System|Fields|
@@ -78,8 +78,68 @@ Each tool evaluates the following:
 
 
 ## Usage
-[how to use]
 
+### Basic Use
+```python
+from biotools import Biotools
+
+bt = Biotools(
+    "path/to/BiotopeMap.shp",  # required for all evaluations
+    "path/to/result/",  # results are saved in this folder
+)
+
+bt.run_h1()  # will create result shp file in path/to/result/result_xx/
+```
+
+### With Additional Inputs
+```python
+from biotools import Biotools
+
+bt = Biotools(
+    "path/to/BiotopeMap.shp",
+    "path/to/result/",
+    environmentallayer_directory="path/to/envlayer/",
+    surveypoint_shp="path/to/Surveypoint.shp",
+    foodchain_info_csv="path/to/foodchain_info.csv"
+)
+bt.run_f6()
+```
+
+### With Arguments
+```python
+from biotools import Biotools
+
+bt = Biotools(
+    "path/to/BiotopeMap.shp",
+    "path/to/result/",
+    environmentallayer_directory="path/to/envlayer/",
+    keystone_species_csv="path/to/keystone_species.csv"
+)
+
+bt.run_h6(threshold=0.7, cellsize=3)  # parameters vary in tools
+```
+
+### Full Evaluation
+```python
+from biotools import Biotools
+
+bt = Biotools(
+    "path/to/BiotopeMap.shp",
+    "path/to/result/",
+    environmentallayer_directory="path/to/envlayer/",
+    keystone_species_csv="path/to/keystone_species.csv"
+    commercialpoint_csv="path/to/commercialpoint.csv"
+    surveypoint_shp="path/to/Surveypoint.shp",
+    foodchain_info_csv="path/to/foodchain_info.csv"
+)
+
+bt.run_h1()
+bt.run_h2()
+...
+bt.run_f6()
+
+bt.merge()  # will create merged result shapefile in path/to/result/result_full/
+```
 
 ## To Do
 - [ ] Habitat
