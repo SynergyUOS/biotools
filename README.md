@@ -1,28 +1,41 @@
 # `biotools` - Biotope Evaluation Toolset Using `arcpy`
 
-12 health evaluations for urban ecosystem.
-Evaluations consist of 6 habitat evaluations and 6 foodchain evaulations.
+This tool evaluate health of urban ecosystem.
+It consists of 6 tools for habitat and 6 tools for foodchain.
 
-## Prerequisites
+Each tool evaluates the following:
+* Habitat Size
+* Layered Structure
+* Patch Isolation
+* Least Cost Distribution
+* Occurrence of Piece of Land
+* Availability of Piece of Land
+* The Number of Food Resources
+* Shannon Diversity Index
+* Combinable Producers and Consumers
+* Connection Strength
+* Similar Functional Species
+* Inhabitation of Food Resources
+
+# Prerequisites
 * Install ArcGIS Pro
 * Install Java 1.4+ for maxent
 * Set `conda` environment to `arcgispro-py3`
 
-## Data Preparation
-Biotope Map: .shp, PCS_ITRF2000_TM
-
-Keystone Species Table: .csv, ITRF_2000_UTM_K
-
-Environmental Layers: .asc, ITRF_2000_UTM_K
-
-Commercial Point Table: .csv, GCS_WGS_1984
-
-Surveypoint Map: .shp, PCS_ITRF2000_TM
-
-Foodchain Info Table: .csv
+# Data Required
+## Specification
+||File Format|Coordnate System|Fields (bracket means substitutable)|
+|-|-|-|-|
+|Biotope Map           |Shapefile|defined|FID, 비오톱|
+|Environmental Layers  |Esri ASCII raster|ITRF_2000_UTM_K|-|
+|Keystone Species Table|CSV|ITRF_2000_UTM_K|[Name], [Longitude], [Latitude]|
+|Commercial Point Table|CSV|GCS_WGS_1984|위도, 경도|
+|Surveypoint Map       |Shapefile|defined| |
+|Foodchain Info Table  |CSV|-|S_Name, Owls_foods, D_Level, Alternatives_S|
 
 *(All csv files are considered to be encoded using euc-kr.)*
 
+## Where to Use
 ||H1|H2|H3|H4|H5|H6|F1|F2|F3|F4|F5|F6|
 |-|-|-|-|-|-|-|-|-|-|-|-|-|
 |Biotope Map           |o|o|o|o|o|o|o|o|o|o|o|o|
@@ -32,9 +45,9 @@ Foodchain Info Table: .csv
 |Surveypoint Map       | | | | | | |o|o|o|o|o|o|
 |Foodchain Info Table  | | | | | | |o|o|o|o|o| |
 
-## Usage
+# Usage
 
-## To Do
+# To Do
 - [ ] Habitat
   - [ ] H1. Habitat Size
     - [x] Implementation
