@@ -1,6 +1,7 @@
-# `biotools` - Biotope Evaluation Toolset Using `arcpy`
+# biotools
+*Biotope Evaluation Toolset Using Arcpy and Maxent*
 
-This tool evaluate health of urban ecosystem.
+This toolset evaluates health of urban ecosystem.
 It consists of 6 tools for habitat and 6 tools for foodchain.
 
 Each tool evaluates the following:
@@ -62,6 +63,8 @@ Each tool evaluates the following:
 *(All csv files are considered to be encoded using euc-kr.)*
 
 *(Brackets can be replaced by another name, if it sticks to same order.)*
+
+*(Values of 비오톱 field must be one of the values in MEDIUM_CATEGORY_CODE field of [this file](biotools/res/biotope_codes.csv).)*
 
 ### Where to Use
 ||H1|H2|H3|H4|H5|H6|F1|F2|F3|F4|F5|F6|
