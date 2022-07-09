@@ -88,7 +88,7 @@ bt = Biotools(
     "path/to/result/",  # results are saved in this folder
 )
 
-bt.run_h1()  # will create result shp file in path/to/result/result_xx/
+bt.run_h1()  # will create result shapefile in path/to/result/result_xx/
 ```
 
 ### With Additional Inputs
@@ -102,6 +102,7 @@ bt = Biotools(
     surveypoint_shp="path/to/Surveypoint.shp",
     foodchain_info_csv="path/to/foodchain_info.csv"
 )
+
 bt.run_f6()
 ```
 
