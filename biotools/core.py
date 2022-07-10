@@ -235,7 +235,7 @@ class Biotools:
     ):
         """Evaluate the number of food resources.
 
-        Creates result_f1 directory in result directory, and saves result shapefile in it.
+        Creates result_f1 directory in the result directory, and saves result shapefile in it.
 
         Args:
             `skip_noname`: If it is `True`, records for which '국명' is not defined
@@ -261,7 +261,7 @@ class Biotools:
     ):
         """Evaluate Shannon diversity index.
 
-        Creates result_f2 directory in result directory, and saves result shapefile in it.
+        Creates result_f2 directory in the result directory, and saves result shapefile in it.
 
         Args:
             `skip_noname`: If it is `True`, records for which '국명' is not defined
@@ -288,7 +288,7 @@ class Biotools:
     ):
         """Evaluate combinable producers and consumers.
 
-        Creates result_f3 directory in result directory, and saves result shapefile in it.
+        Creates result_f3 directory in the result directory, and saves result shapefile in it.
 
         Args:
             `skip_noname`: If it is `True`, records for which '국명' is not defined
@@ -317,7 +317,7 @@ class Biotools:
     ):
         """Evaluate connection strength
 
-        Creates result_f4 directory in result directory, and saves result shapefile in it.
+        Creates result_f4 directory in the result directory, and saves result shapefile in it.
 
         Args:
             `skip_noname`: If it is `True`, records for which '국명' is not defined
@@ -343,7 +343,7 @@ class Biotools:
     ):
         """Evaluates similar functional species.
 
-        Creates result_f5 directory in result directory, and saves result shapefile in it.
+        Creates result_f5 directory in the result directory, and saves result shapefile in it.
 
         Args:
             `skip_noname`: If it is `True`, records for which '국명' is not defined
@@ -368,7 +368,7 @@ class Biotools:
     ):
         """Evaluates inhabitation of food resources.
 
-        Creates result_f6 directory in result directory, creates a maxent directory
+        Creates result_f6 directory in the result directory, creates a maxent directory
         containing maxent results in process directory, and saves final result shapefile in result_f6.
 
         Returns:

@@ -34,22 +34,22 @@ Each tool evaluates the following:
 ### Installation
 1. Clone *arcgispro-py3* conda environment.
    ```console
-   $ conda create --name cloned-env --clone arcgispro-py3
+   $ conda create --name arcgispro-py3-clone --clone arcgispro-py3
    ```
 2. Place biotools package folder in
-   * path/to/cloned-env/Lib/
+   * path/to/arcgispro-py3-clone/Lib/
    * or the same folder as your script.
 
 ### Run
 1. Write a script with biotools. ([how?](#usage))
 2. Activate the cloned conda environment.
    ```console
-   $ conda activate cloned-env
-   (cloned-env) $
+   $ conda activate arcgispro-py3-clone
+   (arcgispro-py3-clone) $
    ```
 3. Run your script.
    ```console
-   (cloned-env) $ python path/to/your_script.py
+   (arcgispro-py3-clone) $ python path/to/your_script.py
    ```
 
 
