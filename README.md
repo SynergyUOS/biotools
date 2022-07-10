@@ -24,8 +24,8 @@ Each tool evaluates the following:
 ## Getting Started
 
 ### Prerequisites
-* ArcGIS Pro 3.0+. (maybe 2.8 is also available...)
-* Java 1.4+. (for maxent)
+* ArcGIS Pro 3.0+
+* Java 1.4+ (for maxent)
   ```console
   $ java -version
   java version "1.8.0_331"
