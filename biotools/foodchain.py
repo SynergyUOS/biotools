@@ -116,7 +116,7 @@ class CombinableProducersAndConsumers:
         foodchain_info_csv,
         result_shp,
         skip_noname=True,
-        scores=(1, 0.6, 0.3)
+        scores=(0.3, 0.6, 1)
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
@@ -141,7 +141,7 @@ class CombinableProducersAndConsumers:
             count_s = sub_df["D_Level"].value_counts()
             d_counts = [count_s.get(d_name, 0) for d_name in ["D1", "D2", "D3"]]
             unique_count = sum(bool(d_count) for d_count in d_counts)
-            score = self._scores[3 - unique_count]
+            score = self._scores[unique_count - 1]
             table.append([bt_id, *d_counts, score])
 
         result_df = pd.DataFrame(
