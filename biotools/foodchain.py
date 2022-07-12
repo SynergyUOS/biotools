@@ -83,7 +83,7 @@ class DiversityIndex:
         for bt_id, sub_df in surveypoint_df.groupby("BT_ID"):
             if bt_id is None:
                 continue
-            count_s = sub_df[sub_df["Owls_foods"] == "Prey_S"].groupby("국명").sum()["개체수"]
+            count_s = sub_df.groupby("국명").sum()["개체수"]
             shannon_index = self._get_shannon_index(count_s)
             table.append([bt_id, count_s.sum(), shannon_index])
 
@@ -234,7 +234,7 @@ class SimilarFunctionalSpecies:
                 alt_alien_count,
                 alt_count,
                 normal_count,
-                int(alt_count > 0),
+                self._score_orderly([alt_count, alt_alien_count], [1, 0.5], 0),
             ])
 
         result_df = pd.DataFrame(
@@ -245,6 +245,12 @@ class SimilarFunctionalSpecies:
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
         result_df = result_df.fillna({"F5_RESULT": 0})
         return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
+
+    def _score_orderly(self, counts, scores, default):
+        for count, score in zip(counts, scores):
+            if count > 0:
+                return score
+        return default
 
 
 class FoodResourceInhabitation:

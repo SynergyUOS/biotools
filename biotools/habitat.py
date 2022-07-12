@@ -132,16 +132,17 @@ class PatchIsolation:
         self._result_shp = str(result_shp)
 
     def run(self):
+        medium_codes = arcutils.get_medium_codes([9, 10, 12, 13, 14, 15])
+        query = arcutils.query_isin("비오톱", medium_codes)
+        selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)
+
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
             buffer_layer = aa.Buffer(
-                self._biotope_shp,
+                selected,
                 "memory/buffer_layer",
                 "125 Meters"
             )
 
-        medium_codes = arcutils.get_medium_codes([9, 10, 12, 13, 14, 15])
-        query = arcutils.query_isin("비오톱", medium_codes)
-        selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
             dissolved = am.Dissolve(
                 selected,
