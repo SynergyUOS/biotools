@@ -30,33 +30,37 @@ class HabitatSize:
         self._scores = scores
 
     def run(self):
-        if not Path(self._sized_shp).exists():
-            medium_codes = arcutils.get_medium_codes([9, 10, 12, 13, 14, 15])
-            query = arcutils.query_isin("비오톱", medium_codes)
-            selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)
-            with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
-                dissolved = am.Dissolve(
-                    selected,
-                    "memory/dissolved",
-                    dissolve_field="비오톱",
-                    multi_part="SINGLE_PART"
-                )
+        # if not Path(self._sized_shp).exists():
+        medium_codes = arcutils.get_medium_codes([9, 10, 12, 13, 14, 15])
+        query = arcutils.query_isin("비오톱", medium_codes)
+        selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
+            dissolved = am.Dissolve(
+                selected,
+                "memory/dissolved",
+                # dissolve_field="비오톱",
+                multi_part="SINGLE_PART"
+            )
 
-            am.CalculateGeometryAttributes(
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
+            calculated = am.CalculateGeometryAttributes(
                 dissolved,
-                [["H1_HECTARES", "AREA_GEODESIC"]],
+                [["H1_HECTARES", "AREA"]],
                 area_unit="HECTARES",
             )
 
-            with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
-                aa.SpatialJoin(
-                    self._biotope_shp,
-                    dissolved,
-                    self._sized_shp,
-                )
-            am.Delete(dissolved)
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
+            sized = aa.SpatialJoin(
+                self._biotope_shp,
+                dissolved,
+                "memory/sized",
+                match_option="WITHIN"
+            )
+        am.Delete(dissolved)
 
-        result_df = arcutils.shp_to_df(self._sized_shp)
+        result_df = arcutils.shp_to_df(sized)
+        am.Delete(sized)
+
         result_df = result_df[["BT_ID", "H1_HECTARE"]]
         result_df = result_df.assign(
             H1_RESULT=lambda x: x["H1_HECTARE"].apply(self._range_evaluate)
