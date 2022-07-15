@@ -68,6 +68,7 @@ def clean_join(target_shp, df, result_shp, on="BT_ID"):
     if Path(result_shp).exists():
         am.Delete(result_shp)
     am.CopyFeatures(joined, result_shp)
+    am.Delete(joined)
 
     fields = arcpy.ListFields(result_shp)
     good_names = get_fields(target_shp) + df.columns.tolist()

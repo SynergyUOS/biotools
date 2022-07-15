@@ -34,6 +34,7 @@ class HabitatSize:
         medium_codes = arcutils.get_medium_codes([9, 10, 12, 13, 14, 15])
         query = arcutils.query_isin("비오톱", medium_codes)
         selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)
+
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
             dissolved = am.Dissolve(
                 selected,
@@ -41,9 +42,10 @@ class HabitatSize:
                 # dissolve_field="비오톱",
                 multi_part="SINGLE_PART"
             )
+        am.Delete(selected)
 
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
-            calculated = am.CalculateGeometryAttributes(
+            am.CalculateGeometryAttributes(
                 dissolved,
                 [["H1_HECTARES", "AREA"]],
                 area_unit="HECTARES",
@@ -152,6 +154,7 @@ class PatchIsolation:
                 selected,
                 "memory/dissolved",
             )
+        am.Delete(selected)
 
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
             in_buffer_table = aa.TabulateIntersection(
