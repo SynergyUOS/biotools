@@ -329,7 +329,7 @@ class PieceoflandAvailability:
                 "memory/result_table",
                 statistics_type="MINIMUM"
             )
-
+        am.Delete(selected)
         result_df = arcutils.shp_to_df(result_table)
         am.Delete(result_table)
 
