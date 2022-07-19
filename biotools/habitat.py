@@ -257,8 +257,17 @@ class PieceoflandOccurrence:
             "5 Kilometers"
         )
 
-        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
-            distance_raster = asa.EucDistance(selected, cell_size=self._cellsize)
+        extent = self._merge_extent(
+            arcpy.Describe(self._biotope_shp).extent,
+            arcpy.Describe(selected).extent,
+            arcutils.ITRF2000_PRJ
+        )
+
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ, extent=extent):
+            distance_raster = asa.EucDistance(
+                selected,
+                cell_size=self._cellsize,
+            )
         am.Delete(commercialpoint_layer)
 
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
@@ -285,6 +294,14 @@ class PieceoflandOccurrence:
         result_df = result_df.fillna({"H5_RESULT": 0})
         return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
+    def _merge_extent(self, extent1, extent2, spatial_reference):
+        extent1 = extent1.projectAs(spatial_reference)
+        extent2 = extent2.projectAs(spatial_reference)
+        xmin = min(extent1.XMin, extent2.XMin)
+        ymin = min(extent1.YMin, extent2.YMin)
+        xmax = max(extent1.XMax, extent2.XMax)
+        ymax = max(extent1.YMax, extent2.YMax)
+        return arcpy.Extent(xmin, ymin, xmax, ymax, spatial_reference=spatial_reference)
 
 class PieceoflandAvailability:
 

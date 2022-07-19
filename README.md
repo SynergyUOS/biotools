@@ -146,3 +146,13 @@ bt.run_f6()
 
 bt.merge()  # will create merged result shapefile in path/to/result/result_full/
 ```
+
+## Test
+### Partial Test
+```console
+(arcgispro-py3-clone) $ python -m unittest test.test_h1
+```
+### Total Test
+```console
+(arcgispro-py3-clone) $ python -m unittest
+```

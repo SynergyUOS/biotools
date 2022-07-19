@@ -7,20 +7,21 @@ import pandas as pd
 from biotools import arcutils, Biotools
 
 
-class TestH1(unittest.TestCase):
+class TestH5(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls.temp_result_dir = Path("test/temp_result/")
         cls.bt = Biotools(
             "test/fixture/biotope.shp",
-            cls.temp_result_dir
+            cls.temp_result_dir,
+            commercialpoint_csv="test/fixture/commercialpoint.csv"
         )
-        cls.bt.run_h1()
+        cls.bt.run_h5()
 
         cls.wgs = cls.temp_result_dir / "process/biotope_WGS.shp"
-        cls.shp = cls.temp_result_dir / "result_h1/biotope_WGS_h1.shp"
-        cls.csv = cls.temp_result_dir / "result_h1/biotope_WGS_h1.csv"
+        cls.shp = cls.temp_result_dir / "result_h5/biotope_WGS_h5.shp"
+        cls.csv = cls.temp_result_dir / "result_h5/biotope_WGS_h5.csv"
 
     def test_wgs_exists(self):
         self.assertTrue(self.wgs.exists)
@@ -35,7 +36,7 @@ class TestH1(unittest.TestCase):
 
     def test_shp_correct(self):
         result = arcutils.shp_to_df(self.shp)
-        answer = arcutils.shp_to_df("test/answer/result_h1/biotope_WGS_h1.shp")
+        answer = arcutils.shp_to_df("test/answer/result_h5/biotope_WGS_h5.shp")
         self.assertTrue(result.equals(answer))
 
     def test_csv_exists(self):
@@ -43,7 +44,7 @@ class TestH1(unittest.TestCase):
 
     def test_csv_correct(self):
         result = pd.read_csv(self.csv)
-        answer = pd.read_csv("test/answer/result_h1/biotope_WGS_h1.csv")
+        answer = pd.read_csv("test/answer/result_h5/biotope_WGS_h5.csv")
         self.assertTrue(result.equals(answer))
 
     @classmethod
