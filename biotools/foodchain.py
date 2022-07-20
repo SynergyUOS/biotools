@@ -87,7 +87,7 @@ class DiversityIndex:
             shannon_index = self._get_shannon_index(count_s)
             table.append([bt_id, count_s.sum(), shannon_index])
 
-        result_df = pd.DataFrame(table, columns=["BT_ID", "F2_PREY_N", "F2_SHANNON"])
+        result_df = pd.DataFrame(table, columns=["BT_ID", "F2_COUNT", "F2_SHANNON"])
         result_df = result_df.assign(
             F2_RESULT=lambda x: self._minmax_normalize(x["F2_SHANNON"])
         )
