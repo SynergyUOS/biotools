@@ -37,7 +37,7 @@ class Biotools:
         keystone_species_csv: Union[str, PathLike] = None,
         commercialpoint_csv: Union[str, PathLike] = None,
         surveypoint_shp: Union[str, PathLike] = None,
-        foodchain_info_csv: Union[str, PathLike] = None
+        foodchain_info_csv: Union[str, PathLike] = None,
     ):
         self._base_dir = Path(result_directory).absolute()
         self._process_dir = self._base_dir / "process"
@@ -59,18 +59,22 @@ class Biotools:
         newshp = self._process_dir / (Path(shp).stem + "_WGS.shp")
         if not newshp.exists():
             am.Project(str(shp), str(newshp), arcutils.WGS1984_PRJ)
-        if newidfield not in arcutils.get_fields(newshp):       # create unique field
+        if newidfield not in arcutils.get_fields(newshp):  # create unique field
             am.CalculateField(
                 str(newshp),
                 newidfield,
                 f"'{newidfield}!FID!'",
                 expression_type="PYTHON3",
-                field_type="TEXT"
+                field_type="TEXT",
             )
         return newshp
 
     def _create_result_shp(self, tag):
-        result = self._base_dir / f"result_{tag}" / (self._biotope_wgs_shp.stem + f"_{tag}.shp")
+        result = (
+            self._base_dir
+            / f"result_{tag}"
+            / (self._biotope_wgs_shp.stem + f"_{tag}.shp")
+        )
         result.parent.mkdir(parents=True, exist_ok=True)
         return result
 
@@ -82,7 +86,7 @@ class Biotools:
     def evaluate_habitat_size(
         self,
         lower_bounds: Sequence[float] = (50, 10, 1, 0),
-        scores: Sequence[float] = (1, 0.5, 0.3, 0.2)
+        scores: Sequence[float] = (1, 0.5, 0.3, 0.2),
     ) -> str:
         """Evaluates habitat size.
 
@@ -99,18 +103,11 @@ class Biotools:
         result_shp = self._create_result_shp("h1")
         sized_shp = self._process_dir / (self._biotope_wgs_shp.stem + "_sized.shp")
         h1 = habitat.HabitatSize(
-            self._biotope_wgs_shp,
-            result_shp,
-            sized_shp,
-            lower_bounds,
-            scores
+            self._biotope_wgs_shp, result_shp, sized_shp, lower_bounds, scores
         )
         return h1.run()
 
-    def evaluate_structured_layer(
-        self,
-        scores: Sequence[float] = (0.3, 0.6, 1)
-    ) -> str:
+    def evaluate_structured_layer(self, scores: Sequence[float] = (0.3, 0.6, 1)) -> str:
         """Evaluates structured layer.
 
         Creates result_h2 directory in the result directory, and saves result shapefile in it.
@@ -123,16 +120,10 @@ class Biotools:
             Path to result shapefile.
         """
         result_shp = self._create_result_shp("h2")
-        h2 = habitat.StructuredLayer(
-            self._biotope_wgs_shp,
-            result_shp,
-            scores
-        )
+        h2 = habitat.StructuredLayer(self._biotope_wgs_shp, result_shp, scores)
         return h2.run()
 
-    def evaluate_patch_isolation(
-        self
-    ):
+    def evaluate_patch_isolation(self):
         """Evaluates patch isolation.
 
         Creates result_h3 directory in the result directory, and saves result shapefile in it.
@@ -150,9 +141,7 @@ class Biotools:
         )
         return h3.run()
 
-    def evaluate_least_cost_distribution(
-        self
-    ):
+    def evaluate_least_cost_distribution(self):
         """Evaluates least cost distribution.
 
         Creates result_h4 directory in the result directory, creates a maxent directory
@@ -172,10 +161,7 @@ class Biotools:
         )
         return h4.run()
 
-    def evaluate_pieceofland_occurrence(
-        self,
-        cellsize: float = 5
-    ):
+    def evaluate_pieceofland_occurrence(self, cellsize: float = 5):
         """Evaluates occurrence probability of piece of land.
 
         Creates result_h5 directory in the result directory, and saves result shapefile in it.
@@ -190,17 +176,12 @@ class Biotools:
         """
         result_shp = self._create_result_shp("h5")
         h5 = habitat.PieceoflandOccurrence(
-            self._biotope_wgs_shp,
-            self._commercialpoint_csv,
-            result_shp,
-            cellsize
+            self._biotope_wgs_shp, self._commercialpoint_csv, result_shp, cellsize
         )
         return h5.run()
 
     def evaluate_pieceofland_availability(
-        self,
-        threshold: float = 0.5,
-        cellsize: float = 5
+        self, threshold: float = 0.5, cellsize: float = 5
     ):
         """Evaluate availability of piece of land.
 
@@ -225,14 +206,11 @@ class Biotools:
             maxent_dir,
             result_shp,
             threshold,
-            cellsize
+            cellsize,
         )
         return h6.run()
 
-    def evaluate_food_resource_count(
-        self,
-        skip_noname: bool = True
-    ):
+    def evaluate_food_resource_count(self, skip_noname: bool = True):
         """Evaluate the number of food resources.
 
         Creates result_f1 directory in the result directory, and saves result shapefile in it.
@@ -251,14 +229,11 @@ class Biotools:
             self._surveypoint_wgs_shp,
             self._foodchain_info_csv,
             result_shp,
-            skip_noname
+            skip_noname,
         )
         return f1.run()
 
-    def evaluate_diversity_index(
-        self,
-        skip_noname: bool = True
-    ):
+    def evaluate_diversity_index(self, skip_noname: bool = True):
         """Evaluate Shannon diversity index.
 
         Creates result_f2 directory in the result directory, and saves result shapefile in it.
@@ -277,7 +252,7 @@ class Biotools:
             self._surveypoint_wgs_shp,
             self._foodchain_info_csv,
             result_shp,
-            skip_noname
+            skip_noname,
         )
         return f2.run()
 
@@ -307,14 +282,11 @@ class Biotools:
             self._foodchain_info_csv,
             result_shp,
             skip_noname,
-            scores
+            scores,
         )
         return f3.run()
 
-    def evaluate_connection_strength(
-        self,
-        skip_noname: bool = True
-    ):
+    def evaluate_connection_strength(self, skip_noname: bool = True):
         """Evaluate connection strength
 
         Creates result_f4 directory in the result directory, and saves result shapefile in it.
@@ -333,14 +305,11 @@ class Biotools:
             self._surveypoint_wgs_shp,
             self._foodchain_info_csv,
             result_shp,
-            skip_noname
+            skip_noname,
         )
         return f4.run()
 
-    def evaluate_similar_functional_species(
-        self,
-        skip_noname: bool = True
-    ):
+    def evaluate_similar_functional_species(self, skip_noname: bool = True):
         """Evaluates similar functional species.
 
         Creates result_f5 directory in the result directory, and saves result shapefile in it.
@@ -359,7 +328,7 @@ class Biotools:
             self._surveypoint_wgs_shp,
             self._foodchain_info_csv,
             result_shp,
-            skip_noname
+            skip_noname,
         )
         return f5.run()
 
@@ -380,7 +349,7 @@ class Biotools:
             am.Project(
                 str(self._surveypoint_wgs_shp),
                 str(surveypoint_itrf_shp),
-                arcutils.ITRF2000_PRJ
+                arcutils.ITRF2000_PRJ,
             )
 
         maxent_dir = self._create_maxent_dir("prey")

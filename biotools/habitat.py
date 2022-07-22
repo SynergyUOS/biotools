@@ -11,18 +11,7 @@ from biotools import arcutils, maxent
 
 
 class HabitatSize:
-
-    def __init__(
-        self,
-        biotope_shp,
-        result_shp,
-        sized_shp,
-        lower_bounds,
-        scores
-    ):
-        """
-        biotope_shp: must have BT_ID field. condisdered WGS 1984.
-        """
+    def __init__(self, biotope_shp, result_shp, sized_shp, lower_bounds, scores):
         self._biotope_shp = str(biotope_shp)
         self._result_shp = str(result_shp)
         self._sized_shp = str(sized_shp)
@@ -40,7 +29,7 @@ class HabitatSize:
                 selected,
                 "memory/dissolved",
                 # dissolve_field="비오톱",
-                multi_part="SINGLE_PART"
+                multi_part="SINGLE_PART",
             )
         am.Delete(selected)
 
@@ -53,10 +42,7 @@ class HabitatSize:
 
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
             sized = aa.SpatialJoin(
-                self._biotope_shp,
-                dissolved,
-                "memory/sized",
-                match_option="WITHIN"
+                self._biotope_shp, dissolved, "memory/sized", match_option="WITHIN"
             )
         am.Delete(dissolved)
 
@@ -76,17 +62,11 @@ class HabitatSize:
         for i, lower_bound in enumerate(self._lower_bounds):
             if value >= lower_bound:
                 return self._scores[i]
-        return 0        # minus area unreachable
+        return 0  # minus area unreachable
 
 
 class StructuredLayer:
-
-    def __init__(
-        self,
-        biotope_shp,
-        result_shp,
-        scores
-    ):
+    def __init__(self, biotope_shp, result_shp, scores):
         self._biotope_shp = str(biotope_shp)
         self._result_shp = str(result_shp)
         self._scores = scores
@@ -98,29 +78,32 @@ class StructuredLayer:
         structure_df = self._create_dummy_structure()
         green_df = structure_df[is_green_s]
         green_df = self._score_structured_layer(green_df)
-        green_df = green_df.rename(columns={
-            "HERB": "H2_HERB",
-            "SHRUB": "H2_SHRUB",
-            "TREE": "H2_TREE",
-        })
+        green_df = green_df.rename(
+            columns={
+                "HERB": "H2_HERB",
+                "SHRUB": "H2_SHRUB",
+                "TREE": "H2_TREE",
+            }
+        )
         result_df = biotope_df[["BT_ID"]].merge(green_df, how="left", on="BT_ID")
         result_df = result_df.fillna({"H2_RESULT": 0})
         return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
 
     def _create_dummy_structure(self):
         import random
+
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         return biotope_df[["BT_ID"]].assign(
             HERB=random.choices(["N", "Y"], weights=[1, 1], k=len(biotope_df)),
             SHRUB=random.choices(["N", "Y"], weights=[3, 1], k=len(biotope_df)),
-            TREE=random.choices(["N", "Y"], weights=[4, 1], k=len(biotope_df))
+            TREE=random.choices(["N", "Y"], weights=[4, 1], k=len(biotope_df)),
         )
 
     def _score_structured_layer(self, df: pd.DataFrame):
         result_df = df.copy()
-        p = (df["HERB"] == "Y")
-        q = (df["SHRUB"] == "Y")
-        r = (df["TREE"] == "Y")
+        p = df["HERB"] == "Y"
+        q = df["SHRUB"] == "Y"
+        r = df["TREE"] == "Y"
         score_s = p.astype(int) + q.astype(int) + r.astype(int)
         score_s = score_s.apply(lambda x: self._scores[x - 1])
         result_df = result_df.assign(H2_RESULT=score_s)
@@ -128,12 +111,7 @@ class StructuredLayer:
 
 
 class PatchIsolation:
-
-    def __init__(
-        self,
-        biotope_shp,
-        result_shp
-    ):
+    def __init__(self, biotope_shp, result_shp):
         self._biotope_shp = str(biotope_shp)
         self._result_shp = str(result_shp)
 
@@ -143,11 +121,7 @@ class PatchIsolation:
         selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)
 
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
-            buffer_layer = aa.Buffer(
-                selected,
-                "memory/buffer_layer",
-                "125 Meters"
-            )
+            buffer_layer = aa.Buffer(selected, "memory/buffer_layer", "125 Meters")
 
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
             dissolved = am.Dissolve(
@@ -162,17 +136,16 @@ class PatchIsolation:
                 "BT_ID",
                 dissolved,
                 "memory/in_buffer_table",
-                out_units="SQUARE_METERS"
+                out_units="SQUARE_METERS",
             )
         result_df = arcutils.shp_to_df(in_buffer_table)
         am.Delete(in_buffer_table)
         am.Delete(buffer_layer)
         am.Delete(dissolved)
 
-        result_df = result_df.rename(columns={
-            "AREA": "H3_AREA",
-            "PERCENTAGE": "H3_RESULT"
-        })
+        result_df = result_df.rename(
+            columns={"AREA": "H3_AREA", "PERCENTAGE": "H3_RESULT"}
+        )
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
         result_df = result_df.fillna({"H3_RESULT": 0})
@@ -180,14 +153,13 @@ class PatchIsolation:
 
 
 class LeastCostDistribution:
-
     def __init__(
         self,
         biotope_shp,
         keystone_species_csv,
         environmentallayer_dir,
         maxent_dir,
-        result_shp
+        result_shp,
     ):
         self._biotope_shp = str(biotope_shp)
         self._keystone_species_csv = str(keystone_species_csv)
@@ -197,9 +169,7 @@ class LeastCostDistribution:
 
     def run(self):
         ascs = maxent.run_maxent(
-            self._keystone_species_csv,
-            self._environmentallayer_dir,
-            self._maxent_dir
+            self._keystone_species_csv, self._environmentallayer_dir, self._maxent_dir
         )
 
         probability_raster = arcutils.any_raster([arcpy.Raster(asc) for asc in ascs])
@@ -209,18 +179,16 @@ class LeastCostDistribution:
                 "BT_ID",
                 probability_raster,
                 "memory/result_table",
-                statistics_type="MEAN"
+                statistics_type="MEAN",
             )
         result_df = arcutils.shp_to_df(result_table)
         am.Delete(result_table)
 
         result_df = result_df.assign(H4_RESULT=lambda x: 1 - x["MEAN"])
         result_df = result_df.drop(columns="ZONE_CODE")
-        result_df = result_df.rename(columns={
-            "COUNT": "H4_COUNT",
-            "AREA": "H4_AREA",
-            "MEAN": "H4_MEAN"
-        })
+        result_df = result_df.rename(
+            columns={"COUNT": "H4_COUNT", "AREA": "H4_AREA", "MEAN": "H4_MEAN"}
+        )
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
         result_df = result_df.fillna({"H4_RESULT": 0})
@@ -228,14 +196,7 @@ class LeastCostDistribution:
 
 
 class PieceoflandOccurrence:
-
-    def __init__(
-        self,
-        biotope_shp,
-        commercialpoint_csv,
-        result_shp,
-        cellsize=5
-    ):
+    def __init__(self, biotope_shp, commercialpoint_csv, result_shp, cellsize=5):
         self._biotope_shp = str(biotope_shp)
         self._result_shp = str(result_shp)
         self._commercialpoint_csv = str(commercialpoint_csv)
@@ -247,23 +208,22 @@ class PieceoflandOccurrence:
             "memory/commercialpoint_layer",
             "경도",
             "위도",
-            coordinate_system=arcutils.WGS1984_PRJ
+            coordinate_system=arcutils.WGS1984_PRJ,
         )
 
-        selected = am.SelectLayerByLocation(        # for efficiency
-            commercialpoint_layer,
-            "INTERSECT",
-            self._biotope_shp,
-            "5 Kilometers"
+        selected = am.SelectLayerByLocation(  # for efficiency
+            commercialpoint_layer, "INTERSECT", self._biotope_shp, "5 Kilometers"
         )
 
         extent = self._merge_extent(
             arcpy.Describe(self._biotope_shp).extent,
             arcpy.Describe(selected).extent,
-            arcutils.ITRF2000_PRJ
+            arcutils.ITRF2000_PRJ,
         )
 
-        with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ, extent=extent):
+        with arcpy.EnvManager(
+            outputCoordinateSystem=arcutils.ITRF2000_PRJ, extent=extent
+        ):
             distance_raster = asa.EucDistance(
                 selected,
                 cell_size=self._cellsize,
@@ -284,11 +244,13 @@ class PieceoflandOccurrence:
         max_distance = result_df["MIN"].max()
         result_df = result_df.assign(H5_RESULT=lambda x: x["MIN"] / max_distance)
         result_df = result_df.drop(columns="ZONE_CODE")
-        result_df = result_df.rename(columns={
-            "COUNT": "H5_COUNT",
-            "AREA": "H5_AREA",
-            "MIN": "H5_MIN",
-        })
+        result_df = result_df.rename(
+            columns={
+                "COUNT": "H5_COUNT",
+                "AREA": "H5_AREA",
+                "MIN": "H5_MIN",
+            }
+        )
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
         result_df = result_df.fillna({"H5_RESULT": 0})
@@ -303,8 +265,8 @@ class PieceoflandOccurrence:
         ymax = max(extent1.YMax, extent2.YMax)
         return arcpy.Extent(xmin, ymin, xmax, ymax, spatial_reference=spatial_reference)
 
-class PieceoflandAvailability:
 
+class PieceoflandAvailability:
     def __init__(
         self,
         biotope_shp,
@@ -313,7 +275,7 @@ class PieceoflandAvailability:
         maxent_dir,
         result_shp,
         threshold=0.5,
-        cellsize=5
+        cellsize=5,
     ):
         self._biotope_shp = str(biotope_shp)
         self._keystone_species_csv = str(keystone_species_csv)
@@ -325,9 +287,7 @@ class PieceoflandAvailability:
 
     def run(self):
         ascs = maxent.run_maxent(
-            self._keystone_species_csv,
-            self._environmentallayer_dir,
-            self._maxent_dir
+            self._keystone_species_csv, self._environmentallayer_dir, self._maxent_dir
         )
 
         probability_raster = arcutils.any_raster([arcpy.Raster(asc) for asc in ascs])
@@ -344,7 +304,7 @@ class PieceoflandAvailability:
                 "BT_ID",
                 distance_raster,
                 "memory/result_table",
-                statistics_type="MINIMUM"
+                statistics_type="MINIMUM",
             )
         am.Delete(selected)
         result_df = arcutils.shp_to_df(result_table)
@@ -353,13 +313,14 @@ class PieceoflandAvailability:
         maximum = result_df["MIN"].max()
         result_df = result_df.assign(H6_RESULT=lambda x: 1 - (x["MIN"] / maximum))
         result_df = result_df.drop(columns="ZONE_CODE")
-        result_df = result_df.rename(columns={
-            "COUNT": "H6_COUNT",
-            "AREA": "H6_AREA",
-            "MIN": "H6_MIN",
-        })
+        result_df = result_df.rename(
+            columns={
+                "COUNT": "H6_COUNT",
+                "AREA": "H6_AREA",
+                "MIN": "H6_MIN",
+            }
+        )
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
         result_df = result_df.fillna({"H6_RESULT": 0})
         return arcutils.clean_join(self._biotope_shp, result_df, self._result_shp)
-

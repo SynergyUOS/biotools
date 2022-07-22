@@ -75,7 +75,7 @@ def clean_join(target_shp, df, result_shp, on="BT_ID"):
     for field, good_name in zip(fields, good_names):
         if field.type == "OID" or field.type == "Geometry":
             continue
-        if good_name not in get_fields(result_shp):     # skip double "BT_ID"
+        if good_name not in get_fields(result_shp):  # skip double "BT_ID"
             am.AddField(result_shp, good_name, field.type)
             am.CalculateField(result_shp, good_name, f"!{field.name}!")
         am.DeleteField(result_shp, field.name)
@@ -84,8 +84,7 @@ def clean_join(target_shp, df, result_shp, on="BT_ID"):
 
 
 def any_raster(rasters: Sequence[arcpy.Raster]):
-    """For each cell, get the probability that at least one probability will be true.
-    """
+    """For each cell, get the probability that at least one probability will be true."""
     complements = [1.0 - raster for raster in rasters]
     product = complements[0]
     for complement in complements[1:]:

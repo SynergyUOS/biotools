@@ -7,10 +7,12 @@ from typing import Union
 import pandas as pd
 
 
-def run_maxent(samplesfile: Union[str, PathLike],
-               environmentallayers: Union[str, PathLike],
-               outputdirectory: Union[str, PathLike],
-               **kwargs) -> list[str]:
+def run_maxent(
+    samplesfile: Union[str, PathLike],
+    environmentallayers: Union[str, PathLike],
+    outputdirectory: Union[str, PathLike],
+    **kwargs,
+) -> list[str]:
     """
     Args:
         `samplesfile`: PathLike
@@ -50,7 +52,10 @@ def run_maxent(samplesfile: Union[str, PathLike],
 
     with importlib.resources.path("biotools.lib", "maxent.jar") as path:
         command = [
-            "java", "-mx512m", "-jar", path,
+            "java",
+            "-mx512m",
+            "-jar",
+            path,
             f"samplesfile={samplesfile}",
             f"environmentallayers={environmentallayers}",
             f"outputdirectory={outputdirectory}",

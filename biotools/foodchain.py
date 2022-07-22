@@ -10,14 +10,13 @@ from biotools import arcutils, maxent, pdplus
 
 
 class FoodResourceCount:
-
     def __init__(
         self,
         biotope_shp,
         surveypoint_shp,
         foodchin_info_csv,
         result_shp,
-        skip_noname=True
+        skip_noname=True,
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
@@ -25,9 +24,7 @@ class FoodResourceCount:
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
         self._surverpoint = _Surveypoint(
-            self._surveypoint_shp,
-            self._biotope_shp,
-            self._foodchain_info_df
+            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
         )
 
     def run(self):
@@ -45,8 +42,7 @@ class FoodResourceCount:
             table.append([bt_id, prey_count, total_count, result])
 
         result_df = pd.DataFrame(
-            table,
-            columns=["BT_ID", "F1_PREY_N", "F1_TOTAL_N", "F1_RESULT"]
+            table, columns=["BT_ID", "F1_PREY_N", "F1_TOTAL_N", "F1_RESULT"]
         )
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
@@ -55,14 +51,13 @@ class FoodResourceCount:
 
 
 class DiversityIndex:
-
     def __init__(
         self,
         biotope_shp,
         surveypoint_shp,
         foodchain_info_csv,
         result_shp,
-        skip_noname=True
+        skip_noname=True,
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
@@ -70,9 +65,7 @@ class DiversityIndex:
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
         self._surverpoint = _Surveypoint(
-            self._surveypoint_shp,
-            self._biotope_shp,
-            self._foodchain_info_df
+            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
         )
 
     def run(self):
@@ -108,7 +101,6 @@ class DiversityIndex:
 
 
 class CombinableProducersAndConsumers:
-
     def __init__(
         self,
         biotope_shp,
@@ -116,7 +108,7 @@ class CombinableProducersAndConsumers:
         foodchain_info_csv,
         result_shp,
         skip_noname=True,
-        scores=(0.3, 0.6, 1)
+        scores=(0.3, 0.6, 1),
     ):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
@@ -125,9 +117,7 @@ class CombinableProducersAndConsumers:
         self._skip_noname = skip_noname
         self._scores = scores
         self._surverpoint = _Surveypoint(
-            self._surveypoint_shp,
-            self._biotope_shp,
-            self._foodchain_info_df
+            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
         )
 
     def run(self):
@@ -145,8 +135,7 @@ class CombinableProducersAndConsumers:
             table.append([bt_id, *d_counts, score])
 
         result_df = pd.DataFrame(
-            table,
-            columns=["BT_ID", "F3_D1_N", "F3_D2_N", "F3_D3_N", "F3_RESULT"]
+            table, columns=["BT_ID", "F3_D1_N", "F3_D2_N", "F3_D3_N", "F3_RESULT"]
         )
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
@@ -155,7 +144,6 @@ class CombinableProducersAndConsumers:
 
 
 class ConnectionStrength:
-
     def __init__(
         self,
         biotope_shp,
@@ -170,9 +158,7 @@ class ConnectionStrength:
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
         self._surverpoint = _Surveypoint(
-            self._surveypoint_shp,
-            self._biotope_shp,
-            self._foodchain_info_df
+            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
         )
 
     def run(self):
@@ -195,7 +181,6 @@ class ConnectionStrength:
 
 
 class SimilarFunctionalSpecies:
-
     def __init__(
         self,
         biotope_shp,
@@ -210,9 +195,7 @@ class SimilarFunctionalSpecies:
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
         self._surverpoint = _Surveypoint(
-            self._surveypoint_shp,
-            self._biotope_shp,
-            self._foodchain_info_df
+            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
         )
 
     def run(self):
@@ -228,18 +211,27 @@ class SimilarFunctionalSpecies:
             alt_alien_count = count_s.get("Alt_Alien_S", 0)
             alt_count = count_s.get("Alt_S", 0)
             normal_count = count_s.get("Normal_S", 0)
-            table.append([
-                bt_id,
-                threatened_count,
-                alt_alien_count,
-                alt_count,
-                normal_count,
-                self._score_orderly([alt_count, alt_alien_count], [1, 0.5], 0),
-            ])
+            table.append(
+                [
+                    bt_id,
+                    threatened_count,
+                    alt_alien_count,
+                    alt_count,
+                    normal_count,
+                    self._score_orderly([alt_count, alt_alien_count], [1, 0.5], 0),
+                ]
+            )
 
         result_df = pd.DataFrame(
             table,
-            columns=["BT_ID", "F5_THRT_N", "F5_ALIEN_N", "F5_ALT_N", "F5_NORM_N", "F5_RESULT"]
+            columns=[
+                "BT_ID",
+                "F5_THRT_N",
+                "F5_ALIEN_N",
+                "F5_ALT_N",
+                "F5_NORM_N",
+                "F5_RESULT",
+            ],
         )
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
@@ -254,7 +246,6 @@ class SimilarFunctionalSpecies:
 
 
 class FoodResourceInhabitation:
-
     def __init__(
         self,
         biotope_shp,
@@ -273,9 +264,7 @@ class FoodResourceInhabitation:
         self._maxent_dir = str(maxent_dir)
         self._result_shp = str(result_shp)
         self._surverpoint = _Surveypoint(
-            self._surveypoint_shp,
-            None,
-            self._foodchain_info_df
+            self._surveypoint_shp, None, self._foodchain_info_df
         )
 
     def run(self):
@@ -296,17 +285,19 @@ class FoodResourceInhabitation:
                 "BT_ID",
                 mean_raster,
                 "memory/result_table",
-                statistics_type="MEAN"
+                statistics_type="MEAN",
             )
         result_df = arcutils.shp_to_df(result_table)
         am.Delete(result_table)
 
         result_df = result_df.drop(columns="ZONE_CODE")
-        result_df = result_df.rename(columns={
-            "COUNT": "F6_COUNT",
-            "AREA": "F6_AREA",
-            "MEAN": "F6_RESULT",
-        })
+        result_df = result_df.rename(
+            columns={
+                "COUNT": "F6_COUNT",
+                "AREA": "F6_AREA",
+                "MEAN": "F6_RESULT",
+            }
+        )
         biotope_df = arcutils.shp_to_df(self._biotope_shp)
         result_df = biotope_df[["BT_ID"]].merge(result_df, how="left", on="BT_ID")
         result_df = result_df.fillna({"F6_RESULT": 0})
@@ -324,7 +315,6 @@ class FoodResourceInhabitation:
 
 
 class _Surveypoint:
-
     def __init__(self, surveypoint_shp, biotope_shp, foodchain_info_df):
         self._biotope_shp = str(biotope_shp)
         self._surveypoint_shp = str(surveypoint_shp)
@@ -336,15 +326,16 @@ class _Surveypoint:
         return self._surverpoint_df
 
     def enrich(self, skip_noname=True):
-        joined = aa.SpatialJoin(self._surveypoint_shp, self._biotope_shp, "memory/joined")
+        joined = aa.SpatialJoin(
+            self._surveypoint_shp, self._biotope_shp, "memory/joined"
+        )
         self._surverpoint_df = arcutils.shp_to_df(joined)
         am.Delete(joined)
 
         self.merge(skip_noname)
 
         self._surverpoint_df["개체수"] = pd.to_numeric(
-            self._surverpoint_df["개체수"],
-            errors="coerce"
+            self._surverpoint_df["개체수"], errors="coerce"
         ).fillna(1)
 
     def merge(self, skip_noname=True):
@@ -353,13 +344,12 @@ class _Surveypoint:
             self._foodchain_info_df,
             how="left",
             left_on="국명",
-            right_on="S_Name"
+            right_on="S_Name",
         )
 
         if skip_noname:
             self._surverpoint_df = pdplus.drop_if(
-                self._surverpoint_df,
-                lambda x: x["국명"] == " "
+                self._surverpoint_df, lambda x: x["국명"] == " "
             )
         else:
             self._surverpoint_df = pdplus.replace_row(
@@ -368,7 +358,7 @@ class _Surveypoint:
                     "국명": "Noname",
                     "Owls_foods": "Normal_S",
                     "D_Level": "D3",
-                    "Alternative_s": "Normal_S"
+                    "Alternative_s": "Normal_S",
                 },
-                lambda x: x["국명"] == " "
+                lambda x: x["국명"] == " ",
             )
