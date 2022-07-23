@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import arcpy
 import arcpy.analysis as aa
 import arcpy.management as am
@@ -11,15 +9,13 @@ from biotools import arcutils, maxent
 
 
 class HabitatSize:
-    def __init__(self, biotope_shp, result_shp, sized_shp, lower_bounds, scores):
+    def __init__(self, biotope_shp, result_shp, lower_bounds, scores):
         self._biotope_shp = str(biotope_shp)
         self._result_shp = str(result_shp)
-        self._sized_shp = str(sized_shp)
         self._lower_bounds = lower_bounds
         self._scores = scores
 
     def run(self):
-        # if not Path(self._sized_shp).exists():
         medium_codes = arcutils.get_medium_codes([9, 10, 12, 13, 14, 15])
         query = arcutils.query_isin("비오톱", medium_codes)
         selected = am.SelectLayerByAttribute(self._biotope_shp, "NEW_SELECTION", query)

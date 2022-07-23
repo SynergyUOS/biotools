@@ -101,9 +101,8 @@ class Biotools:
             Path to result shapefile.
         """
         result_shp = self._create_result_shp("h1")
-        sized_shp = self._process_dir / (self._biotope_wgs_shp.stem + "_sized.shp")
         h1 = habitat.HabitatSize(
-            self._biotope_wgs_shp, result_shp, sized_shp, lower_bounds, scores
+            self._biotope_wgs_shp, result_shp, lower_bounds, scores
         )
         return h1.run()
 

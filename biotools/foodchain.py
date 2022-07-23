@@ -23,12 +23,12 @@ class FoodResourceCount:
         self._foodchain_info_df = pd.read_csv(foodchin_info_csv, encoding="euc-kr")
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
-        self._surverpoint = _Surveypoint(
-            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
-        )
+        self._surverpoint = _Surveypoint(self._surveypoint_shp)
 
     def run(self):
-        self._surverpoint.enrich(self._skip_noname)
+        self._surverpoint.enrich(
+            self._biotope_shp, self._foodchain_info_df, self._skip_noname
+        )
         surveypoint_df = self._surverpoint.df
 
         table = []
@@ -64,12 +64,12 @@ class DiversityIndex:
         self._foodchain_info_df = pd.read_csv(foodchain_info_csv, encoding="euc-kr")
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
-        self._surverpoint = _Surveypoint(
-            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
-        )
+        self._surverpoint = _Surveypoint(self._surveypoint_shp)
 
     def run(self):
-        self._surverpoint.enrich(self._skip_noname)
+        self._surverpoint.enrich(
+            self._biotope_shp, self._foodchain_info_df, self._skip_noname
+        )
         surveypoint_df = self._surverpoint.df
 
         table = []
@@ -116,12 +116,12 @@ class CombinableProducersAndConsumers:
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
         self._scores = scores
-        self._surverpoint = _Surveypoint(
-            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
-        )
+        self._surverpoint = _Surveypoint(self._surveypoint_shp)
 
     def run(self):
-        self._surverpoint.enrich(self._skip_noname)
+        self._surverpoint.enrich(
+            self._biotope_shp, self._foodchain_info_df, self._skip_noname
+        )
         surveypoint_df = self._surverpoint.df
 
         table = []
@@ -157,12 +157,12 @@ class ConnectionStrength:
         self._foodchain_info_df = pd.read_csv(foodchain_info_csv, encoding="euc-kr")
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
-        self._surverpoint = _Surveypoint(
-            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
-        )
+        self._surverpoint = _Surveypoint(self._surveypoint_shp)
 
     def run(self):
-        self._surverpoint.enrich(self._skip_noname)
+        self._surverpoint.enrich(
+            self._biotope_shp, self._foodchain_info_df, self._skip_noname
+        )
         surveypoint_df = self._surverpoint.df
 
         table = []
@@ -194,12 +194,12 @@ class SimilarFunctionalSpecies:
         self._foodchain_info_df = pd.read_csv(foodchain_info_csv, encoding="euc-kr")
         self._result_shp = str(result_shp)
         self._skip_noname = skip_noname
-        self._surverpoint = _Surveypoint(
-            self._surveypoint_shp, self._biotope_shp, self._foodchain_info_df
-        )
+        self._surverpoint = _Surveypoint(self._surveypoint_shp)
 
     def run(self):
-        self._surverpoint.enrich(self._skip_noname)
+        self._surverpoint.enrich(
+            self._biotope_shp, self._foodchain_info_df, self._skip_noname
+        )
         surveypoint_df = self._surverpoint.df
 
         table = []
@@ -263,12 +263,10 @@ class FoodResourceInhabitation:
         self._sample_csv = str(sample_csv)
         self._maxent_dir = str(maxent_dir)
         self._result_shp = str(result_shp)
-        self._surverpoint = _Surveypoint(
-            self._surveypoint_shp, None, self._foodchain_info_df
-        )
+        self._surverpoint = _Surveypoint(self._surveypoint_shp)
 
     def run(self):
-        self._surverpoint.merge()
+        self._surverpoint.merge_foodchain_info(self._foodchain_info_df)
         surveypoint_itrf_df = self._surverpoint.df
         self._export_samples(surveypoint_itrf_df, self._sample_csv)
 
@@ -315,33 +313,32 @@ class FoodResourceInhabitation:
 
 
 class _Surveypoint:
-    def __init__(self, surveypoint_shp, biotope_shp, foodchain_info_df):
-        self._biotope_shp = str(biotope_shp)
+    def __init__(self, surveypoint_shp):
         self._surveypoint_shp = str(surveypoint_shp)
-        self._foodchain_info_df = foodchain_info_df
         self._surverpoint_df = arcutils.shp_to_df(surveypoint_shp)
 
     @property
     def df(self):
         return self._surverpoint_df
 
-    def enrich(self, skip_noname=True):
-        joined = aa.SpatialJoin(
-            self._surveypoint_shp, self._biotope_shp, "memory/joined"
-        )
+    def enrich(self, biotope_shp, foodchain_info_df, skip_noname=True):
+        self.merge_biotope(biotope_shp)
+        self.merge_foodchain_info(foodchain_info_df, skip_noname)
+
+    def merge_biotope(self, biotope_shp):
+        with arcpy.EnvManager(outputCoordinateSystem=arcutils.WGS1984_PRJ):
+            joined = aa.SpatialJoin(self._surveypoint_shp, biotope_shp, "memory/joined")
         self._surverpoint_df = arcutils.shp_to_df(joined)
         am.Delete(joined)
-
-        self.merge(skip_noname)
 
         self._surverpoint_df["개체수"] = pd.to_numeric(
             self._surverpoint_df["개체수"], errors="coerce"
         ).fillna(1)
 
-    def merge(self, skip_noname=True):
+    def merge_foodchain_info(self, foodchain_info_df, skip_noname=True):
         self._surverpoint_df = pd.merge(
             self._surverpoint_df,
-            self._foodchain_info_df,
+            foodchain_info_df,
             how="left",
             left_on="국명",
             right_on="S_Name",
