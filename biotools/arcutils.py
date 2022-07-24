@@ -1,4 +1,5 @@
 import importlib.resources
+import itertools
 from os import PathLike
 from pathlib import Path
 from typing import Sequence, Union
@@ -30,10 +31,7 @@ BIOTOPE_CODES = _init_biotope_codes()
 
 
 def get_medium_codes(large_codes):
-    result = []
-    for large_code in large_codes:
-        result += BIOTOPE_CODES[large_code]
-    return result
+    return itertools.chain(*(BIOTOPE_CODES[large_code] for large_code in large_codes))
 
 
 def query_isin(field, targets):
