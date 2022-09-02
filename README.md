@@ -170,4 +170,5 @@ The following is a list of the researchers who have helped to improve Biotools b
 
 ## License
 The Biotools is distributed under the Spatial science lab in University of Seoul(UOS), a permissive open-source (free software) license.
+
 ![](https://lauos.or.kr/wp-content/uploads/2022/02/융합연구실로고.png)
