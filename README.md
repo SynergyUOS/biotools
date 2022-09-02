@@ -156,3 +156,18 @@ bt.merge()  # will create merged result shapefile in path/to/result/result_full/
 ```console
 (arcgispro-py3-clone) $ python -m unittest
 ```
+
+## Funding
+This work was conducted with the support of the Korea Environment Industry and Technology Institute via the Urban Ecological Health Promotion Technology Development Project. It was funded by the Korea Ministry of Environment (grant no. 2019002760001).
+
+## Contributors
+The following is a list of the researchers who have helped to improve Biotools by constructing ideas and contributing code.
+1. Chan Park (박찬)
+2. Suryeon Kim (김수련)
+3. Jaeyeon choi (최재연)
+4. Aida Ayano (아이다 아야노)
+5. Hyeonjin Kim (김현진)
+
+## License
+The Biotools is distributed under the Spatial science lab in University of Seoul(UOS), a permissive open-source (free software) license.
+![](https://lauos.or.kr/wp-content/uploads/2022/02/융합연구실로고.png)
