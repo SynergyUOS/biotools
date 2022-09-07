@@ -2,7 +2,7 @@ import importlib.resources
 from os import PathLike
 from pathlib import Path
 import subprocess
-from typing import Union
+from typing import List, Union
 
 import pandas as pd
 
@@ -12,7 +12,7 @@ def run_maxent(
     environmentallayers: Union[str, PathLike],
     outputdirectory: Union[str, PathLike],
     **kwargs,
-) -> list[str]:
+) -> List[str]:
     """
     Args:
         `samplesfile`: PathLike
@@ -55,10 +55,10 @@ def run_maxent(
             "java",
             "-mx512m",
             "-jar",
-            path,
-            f"samplesfile={samplesfile}",
-            f"environmentallayers={environmentallayers}",
-            f"outputdirectory={outputdirectory}",
+            str(path),
+            f"samplesfile={str(samplesfile)}",
+            f"environmentallayers={str(environmentallayers)}",
+            f"outputdirectory={str(outputdirectory)}",
         ]
         command += kwargs_to_command(kwargs)
 

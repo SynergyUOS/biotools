@@ -24,7 +24,7 @@ Each tool evaluates the following:
 ## Getting Started
 
 ### Prerequisites
-* ArcGIS Pro 3.0+
+* ArcGIS Pro 2.9+
 * Java 1.4+ (for maxent)
   ```console
   $ java -version
@@ -44,7 +44,7 @@ Each tool evaluates the following:
 1. Write a script with biotools. ([how?](#usage))
 2. Activate the cloned conda environment.
    ```console
-   $ conda activate arcgispro-py3-clone
+   $ activate arcgispro-py3-clone
    (arcgispro-py3-clone) $
    ```
 3. Run your script.

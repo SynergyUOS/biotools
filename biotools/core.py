@@ -342,8 +342,8 @@ class Biotools:
         Returns:
             Path to result shapefile.
         """
-        newstem = self._surveypoint_wgs_shp.stem.replace("WGS", "ITRF")
-        surveypoint_itrf_shp = self._surveypoint_wgs_shp.with_stem(newstem)
+        newname = self._surveypoint_wgs_shp.name.replace("WGS", "ITRF")
+        surveypoint_itrf_shp = self._surveypoint_wgs_shp.with_name(newname)
         if not surveypoint_itrf_shp.exists():
             am.Project(
                 str(self._surveypoint_wgs_shp),

@@ -32,7 +32,7 @@ class HabitatSize:
         with arcpy.EnvManager(outputCoordinateSystem=arcutils.ITRF2000_PRJ):
             am.CalculateGeometryAttributes(
                 dissolved,
-                [["H1_HECTARES", "AREA"]],
+                [["H1_HECTARE", "AREA"]],
                 area_unit="HECTARES",
             )
 
